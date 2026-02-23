@@ -1,11 +1,9 @@
 import { db } from "@/db";
 import { podcasts, episodes, playbackSettings } from "@/db/schema";
-import { eq, and, notInArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { parseFeed } from "./rss";
 import { downloadAudio } from "./download";
-import { unlinkSync, readdirSync } from "fs";
-import { AUDIO_DIR } from "@/db";
-import { join } from "path";
+import { unlinkSync } from "fs";
 
 const MAX_CONCURRENT_DOWNLOADS = 3;
 const AUTO_DOWNLOAD_COUNT = 10;
