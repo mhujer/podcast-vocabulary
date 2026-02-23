@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    user: '${UID}:${GID}'
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - .:/podcast-vocabulary
+      - ${HOME}/.claude:/home/node/.claude
+      - ${HOME}/.claude.json:/home/node/.claude.json
+      - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
+      - ${HOME}/.npm:/home/node/.npm
+    env_file:
+      - .env.local
