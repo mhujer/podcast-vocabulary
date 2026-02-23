@@ -3,13 +3,15 @@ import { podcasts, episodes, playbackSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { parseFeed } from "./rss";
 import { downloadAudio } from "./download";
-import { unlinkSync } from "fs";
+import { unlinkSync, rmSync } from "fs";
+import { join } from "path";
+import { AUDIO_DIR } from "@/db";
 
 const MAX_CONCURRENT_DOWNLOADS = 3;
 const AUTO_DOWNLOAD_COUNT = 10;
 
 async function downloadWithConcurrency(
-  tasks: Array<{ episodeId: string; audioUrl: string }>
+  tasks: Array<{ episodeId: string; audioUrl: string; podcastId: string }>
 ) {
   const results: Array<{ episodeId: string; filePath?: string; error?: string }> = [];
   const executing = new Set<Promise<void>>();
@@ -17,7 +19,7 @@ async function downloadWithConcurrency(
   for (const task of tasks) {
     const p = (async () => {
       try {
-        const filePath = await downloadAudio(task.audioUrl, task.episodeId);
+        const filePath = await downloadAudio(task.audioUrl, task.episodeId, task.podcastId);
         await db
           .update(episodes)
           .set({ filePath })
@@ -78,6 +80,7 @@ export async function addPodcast(rssUrl: string) {
   const toDownload = insertedEpisodes.slice(0, AUTO_DOWNLOAD_COUNT).map((ep) => ({
     episodeId: ep.id,
     audioUrl: ep.audioUrl,
+    podcastId: podcast.id,
   }));
   downloadWithConcurrency(toDownload).catch(console.error);
 
@@ -147,7 +150,7 @@ export async function refreshAllFeeds() {
       const toDownload = sortedEps
         .filter((ep) => !ep.filePath)
         .slice(0, AUTO_DOWNLOAD_COUNT)
-        .map((ep) => ({ episodeId: ep.id, audioUrl: ep.audioUrl }));
+        .map((ep) => ({ episodeId: ep.id, audioUrl: ep.audioUrl, podcastId: podcast.id }));
 
       downloadWithConcurrency(toDownload).catch(console.error);
     } catch (err) {
@@ -174,6 +177,13 @@ export async function deletePodcast(id: string) {
     }
   }
 
+  // Remove the podcast audio subdirectory
+  try {
+    rmSync(join(AUDIO_DIR, id), { recursive: true, force: true });
+  } catch {
+    // directory may already be gone
+  }
+
   // Cascade delete handles episodes, transcriptions, playback_settings
   await db.delete(podcasts).where(eq(podcasts.id, id));
 }
@@ -187,7 +197,7 @@ export async function downloadEpisode(episodeId: string) {
   if (!episode) throw new Error(`Episode ${episodeId} not found`);
   if (episode.filePath) return episode.filePath;
 
-  const filePath = await downloadAudio(episode.audioUrl, episodeId);
+  const filePath = await downloadAudio(episode.audioUrl, episodeId, episode.podcastId);
   await db.update(episodes).set({ filePath }).where(eq(episodes.id, episodeId));
   return filePath;
 }
