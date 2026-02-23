@@ -3,7 +3,7 @@
 import { usePlayer } from "@/hooks/use-player";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw, Minus, Plus } from "lucide-react";
 
 const SPEED_OPTIONS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0];
 
@@ -34,10 +34,18 @@ export function PlayerBar() {
 
   if (!currentEpisode) return null;
 
-  const cycleSpeed = () => {
-    const currentIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
-    const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
-    setSpeed(SPEED_OPTIONS[nextIndex]);
+  const currentSpeedIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
+
+  const decreaseSpeed = () => {
+    if (currentSpeedIndex > 0) {
+      setSpeed(SPEED_OPTIONS[currentSpeedIndex - 1]);
+    }
+  };
+
+  const increaseSpeed = () => {
+    if (currentSpeedIndex < SPEED_OPTIONS.length - 1) {
+      setSpeed(SPEED_OPTIONS[currentSpeedIndex + 1]);
+    }
   };
 
   return (
@@ -59,15 +67,31 @@ export function PlayerBar() {
           <Button variant="ghost" size="icon" onClick={togglePlayPause}>
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={cycleSpeed}
-            className="text-xs min-w-[3.5rem]"
-            title="Playback speed"
-          >
-            {playbackSpeed.toFixed(1)}x
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={decreaseSpeed}
+              disabled={currentSpeedIndex <= 0}
+              title="Decrease speed"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <span className="text-xs min-w-[3rem] text-center select-none">
+              {playbackSpeed.toFixed(1)}x
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={increaseSpeed}
+              disabled={currentSpeedIndex >= SPEED_OPTIONS.length - 1}
+              title="Increase speed"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
 
         {/* Time + slider */}
