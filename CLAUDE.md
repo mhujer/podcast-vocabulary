@@ -43,4 +43,4 @@ No test framework is configured yet.
 
 **Transcription**: Manual trigger per episode, German language, segment-level timestamps (`start_time`, `end_time`, `text`). Status: `pending` → `in_progress` → `completed` / `failed`.
 
-**Player layout**: Persistent audio player at top of page; transcript (karaoke-style highlighting) below.
+**Player layout**: Persistent audio player at the bottom of page; transcript (karaoke-style highlighting) below.
