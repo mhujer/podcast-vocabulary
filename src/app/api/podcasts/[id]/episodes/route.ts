@@ -11,7 +11,7 @@ export async function GET(
   const result = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.podcastId, parseInt(id, 10)))
+    .where(eq(episodes.podcastId, id))
     .orderBy(desc(episodes.pubDate));
 
   return NextResponse.json(result);

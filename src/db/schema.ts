@@ -2,7 +2,7 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import type { InferSelectModel } from "drizzle-orm";
 
 export const podcasts = sqliteTable("podcasts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   rssUrl: text("rss_url").notNull(),
   latestEpisodeDate: text("latest_episode_date"),
@@ -12,8 +12,8 @@ export const podcasts = sqliteTable("podcasts", {
 });
 
 export const episodes = sqliteTable("episodes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  podcastId: integer("podcast_id")
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  podcastId: text("podcast_id")
     .notNull()
     .references(() => podcasts.id, { onDelete: "cascade" }),
   guid: text("guid"),
@@ -28,8 +28,8 @@ export const episodes = sqliteTable("episodes", {
 });
 
 export const transcriptions = sqliteTable("transcriptions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  episodeId: integer("episode_id")
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  episodeId: text("episode_id")
     .notNull()
     .references(() => episodes.id, { onDelete: "cascade" }),
   segments: text("segments"), // JSON array of {start_time, end_time, text}
@@ -39,7 +39,7 @@ export const transcriptions = sqliteTable("transcriptions", {
 });
 
 export const playbackSettings = sqliteTable("playback_settings", {
-  podcastId: integer("podcast_id")
+  podcastId: text("podcast_id")
     .primaryKey()
     .references(() => podcasts.id, { onDelete: "cascade" }),
   playbackSpeed: real("playback_speed").notNull().default(1.0),

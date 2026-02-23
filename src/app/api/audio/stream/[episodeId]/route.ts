@@ -22,7 +22,7 @@ export async function GET(
   const [episode] = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.id, parseInt(episodeId, 10)));
+    .where(eq(episodes.id, episodeId));
 
   if (!episode || !episode.filePath) {
     return NextResponse.json({ error: "Audio not available" }, { status: 404 });

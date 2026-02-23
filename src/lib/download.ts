@@ -5,7 +5,7 @@ import { AUDIO_DIR } from "@/db";
 
 export async function downloadAudio(
   audioUrl: string,
-  episodeId: number
+  episodeId: string
 ): Promise<string> {
   const ext = extractExtension(audioUrl);
   const filename = `${episodeId}.${ext}`;

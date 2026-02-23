@@ -8,7 +8,7 @@ import { Trash2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 interface PodcastWithCount {
-  id: number;
+  id: string;
   name: string;
   rssUrl: string;
   latestEpisodeDate: string | null;
@@ -30,7 +30,7 @@ export function PodcastList({ podcasts }: { podcasts: PodcastWithCount[] }) {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Delete this podcast and all its episodes?")) return;
     await fetch(`/api/podcasts/${id}`, { method: "DELETE" });
     router.refresh();

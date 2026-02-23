@@ -16,9 +16,9 @@ export function EpisodeList({
 }) {
   const router = useRouter();
   const { play, currentEpisode } = usePlayer();
-  const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
-  const handleDownload = async (episodeId: number) => {
+  const handleDownload = async (episodeId: string) => {
     setDownloadingIds((prev) => new Set(prev).add(episodeId));
     try {
       const res = await fetch(`/api/episodes/${episodeId}/download`, {

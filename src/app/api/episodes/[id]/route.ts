@@ -11,7 +11,7 @@ export async function GET(
   const [episode] = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.id, parseInt(id, 10)));
+    .where(eq(episodes.id, id));
 
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });

@@ -14,19 +14,18 @@ export default async function PodcastPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const podcastId = parseInt(id, 10);
 
   const [podcast] = await db
     .select()
     .from(podcasts)
-    .where(eq(podcasts.id, podcastId));
+    .where(eq(podcasts.id, id));
 
   if (!podcast) notFound();
 
   const episodeList = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.podcastId, podcastId))
+    .where(eq(episodes.podcastId, id))
     .orderBy(desc(episodes.pubDate));
 
   return (

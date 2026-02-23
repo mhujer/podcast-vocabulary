@@ -18,6 +18,8 @@ npx tsc --noEmit   # TypeScript type check
 
 No test framework is configured yet.
 
+Always run ESLint and TypeScript type check after making changes.
+
 ## Architecture
 
 **Stack**: Next.js (App Router) + TypeScript + Tailwind CSS v4 + SQLite + OpenAI Whisper API

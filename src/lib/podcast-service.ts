@@ -11,9 +11,9 @@ const MAX_CONCURRENT_DOWNLOADS = 3;
 const AUTO_DOWNLOAD_COUNT = 10;
 
 async function downloadWithConcurrency(
-  tasks: Array<{ episodeId: number; audioUrl: string }>
+  tasks: Array<{ episodeId: string; audioUrl: string }>
 ) {
-  const results: Array<{ episodeId: number; filePath?: string; error?: string }> = [];
+  const results: Array<{ episodeId: string; filePath?: string; error?: string }> = [];
   const executing = new Set<Promise<void>>();
 
   for (const task of tasks) {
@@ -158,7 +158,7 @@ export async function refreshAllFeeds() {
   }
 }
 
-export async function deletePodcast(id: number) {
+export async function deletePodcast(id: string) {
   // Get all episodes to clean up audio files
   const podcastEpisodes = await db
     .select({ filePath: episodes.filePath })
@@ -180,7 +180,7 @@ export async function deletePodcast(id: number) {
   await db.delete(podcasts).where(eq(podcasts.id, id));
 }
 
-export async function downloadEpisode(episodeId: number) {
+export async function downloadEpisode(episodeId: string) {
   const [episode] = await db
     .select()
     .from(episodes)

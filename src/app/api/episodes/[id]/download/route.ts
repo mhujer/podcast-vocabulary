@@ -7,7 +7,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const filePath = await downloadEpisode(parseInt(id, 10));
+    const filePath = await downloadEpisode(id);
     return NextResponse.json({ filePath });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

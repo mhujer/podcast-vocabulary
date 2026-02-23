@@ -8,12 +8,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const episodeId = parseInt(id, 10);
 
   const [episode] = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.id, episodeId));
+    .where(eq(episodes.id, id));
 
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
@@ -35,13 +34,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const episodeId = parseInt(id, 10);
   const body = await request.json();
 
   const [episode] = await db
     .select()
     .from(episodes)
-    .where(eq(episodes.id, episodeId));
+    .where(eq(episodes.id, id));
 
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
@@ -54,7 +52,7 @@ export async function PATCH(
         lastPlaybackPosition: body.position,
         lastPlayedDate: new Date().toISOString(),
       })
-      .where(eq(episodes.id, episodeId));
+      .where(eq(episodes.id, id));
   }
 
   if (body.speed !== undefined) {
