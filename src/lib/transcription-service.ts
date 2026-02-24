@@ -10,7 +10,7 @@ import { DATA_DIR } from "@/db";
 
 const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
-const WHISPER_MODEL = "/data/whisper/ggml-medium.bin";
+const WHISPER_MODEL = join(DATA_DIR, "whisper", "ggml-medium.bin");
 
 function log(...args: unknown[]) {
   console.log("[transcription-service]", ...args);

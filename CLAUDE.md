@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## General
 - This app is only for me, so always show the full error message, not a user-friendly message
+- Add console.log to backend or frontend code to make it easier to debug issues (I'm following the server output)  
 
 ## Commands
 

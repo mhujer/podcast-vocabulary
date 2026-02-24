@@ -7,8 +7,13 @@ ARG APP_DIR=/podcast-vocabulary
 # Install git, curl, and python3 for Claude Code (python3 needed for custom statusline)
 RUN apt-get update && apt-get install -y git curl python3 ffmpeg && rm -rf /var/lib/apt/lists/*
 
-# Copy whisper-cli binary and model download script from whisper build stage
+# Copy whisper-cli binary, shared libraries, and model download script from whisper build stage
 COPY --from=whisper /app/build/bin/whisper-cli /usr/local/bin/whisper-cli
+COPY --from=whisper /app/build/src/libwhisper.so.1 /usr/local/lib/
+COPY --from=whisper /app/build/ggml/src/libggml.so.0 /usr/local/lib/
+COPY --from=whisper /app/build/ggml/src/libggml-base.so.0 /usr/local/lib/
+COPY --from=whisper /app/build/ggml/src/libggml-cpu.so.0 /usr/local/lib/
+RUN ldconfig
 COPY --from=whisper /app/models/download-ggml-model.sh /usr/local/bin/download-ggml-model.sh
 
 # Set home for non-root user
@@ -44,4 +49,4 @@ ENV COLORTERM=truecolor
 EXPOSE 3000
 
 # Default command: download whisper model if missing, install deps, run dev
-CMD ["bash", "-c", "test -f /data/whisper/ggml-medium.bin || download-ggml-model.sh medium /data/whisper && npm install && npm run dev"]
+CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && npm run dev"]
