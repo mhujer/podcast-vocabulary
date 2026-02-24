@@ -10,7 +10,7 @@ import { DATA_DIR } from "@/db";
 
 const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
-const WHISPER_MODEL = "/usr/local/share/whisper/ggml-medium.bin";
+const WHISPER_MODEL = "/data/whisper/ggml-medium.bin";
 
 async function compressAudio(inputPath: string, episodeId: string): Promise<string> {
   const outDir = join(TMP_DIR, episodeId);
