@@ -1,9 +1,18 @@
+FROM ghcr.io/ggml-org/whisper.cpp:main AS whisper
+
+# Download medium model at build time
+RUN /app/models/download-ggml-model.sh medium /usr/local/share/whisper
+
 FROM node:24-slim
 
 ARG APP_DIR=/podcast-vocabulary
 
 # Install git, curl, and python3 for Claude Code (python3 needed for custom statusline)
 RUN apt-get update && apt-get install -y git curl python3 ffmpeg && rm -rf /var/lib/apt/lists/*
+
+# Copy whisper-cli binary and model from whisper build stage
+COPY --from=whisper /app/build/bin/whisper-cli /usr/local/bin/whisper-cli
+COPY --from=whisper /usr/local/share/whisper/ /usr/local/share/whisper/
 
 # Set home for non-root user
 ENV HOME=/home/node

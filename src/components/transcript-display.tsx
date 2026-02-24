@@ -13,11 +13,11 @@ function formatTimestamp(seconds: number): string {
 export function TranscriptDisplay({
   segments,
   currentTime,
-  onSegmentClick,
+  onSeek,
 }: {
   segments: TranscriptionSegment[];
   currentTime: number;
-  onSegmentClick: (segment: TranscriptionSegment) => void;
+  onSeek: (time: number) => void;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   const activeIndex = segments.findIndex(
@@ -40,12 +40,37 @@ export function TranscriptDisplay({
               className={`flex gap-3 px-2 py-1.5 rounded cursor-pointer hover:bg-accent/50 transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
               }`}
-              onClick={() => onSegmentClick(seg)}
+              onClick={() => onSeek(seg.start)}
             >
               <span className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums">
                 {formatTimestamp(seg.start)}
               </span>
-              <span className="text-sm">{seg.text}</span>
+              <span className="text-sm">
+                {isActive && seg.words ? (
+                  seg.words.map((w, wi) => {
+                    const isActiveWord =
+                      w.start <= currentTime && currentTime < w.end;
+                    return (
+                      <span
+                        key={wi}
+                        className={
+                          isActiveWord
+                            ? "bg-primary/30 rounded px-0.5"
+                            : ""
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSeek(w.start);
+                        }}
+                      >
+                        {w.word}
+                      </span>
+                    );
+                  })
+                ) : (
+                  seg.text
+                )}
+              </span>
             </div>
           );
         })}

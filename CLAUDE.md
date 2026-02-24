@@ -22,7 +22,7 @@ Always run ESLint and TypeScript type check after making changes.
 
 ## Architecture
 
-**Stack**: Next.js (App Router) + TypeScript + Tailwind CSS v4 + SQLite + OpenAI Whisper API
+**Stack**: Next.js (App Router) + TypeScript + Tailwind CSS v4 + SQLite + whisper.cpp (local)
 
 **App Router**: All pages and API routes live under `src/app/`. Path alias `@/*` maps to `src/*`.
 
@@ -30,7 +30,7 @@ Always run ESLint and TypeScript type check after making changes.
 - `/data/podcasts.db` — SQLite database
 - `/data/audio/` — Downloaded podcast audio files
 
-**Environment**: Requires `OPENAI_API_KEY` in `.env.local` for Whisper transcription.
+**Environment**: No API keys required. Transcription uses local whisper.cpp bundled in Docker image.
 
 **SQLite tables**: `podcasts`, `episodes`, `transcriptions`, `playback_settings` — see SPEC.md for full schema.
 
@@ -43,6 +43,6 @@ Always run ESLint and TypeScript type check after making changes.
 
 **Playback state persistence**: playback speed is per-podcast; playback position is per-episode; both stored in SQLite.
 
-**Transcription**: Manual trigger per episode, German language, segment-level timestamps (`start_time`, `end_time`, `text`). Status: `pending` → `in_progress` → `completed` / `failed`.
+**Transcription**: Manual trigger per episode, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`.
 
 **Player layout**: Persistent audio player at the bottom of page; transcript (karaoke-style highlighting) below.

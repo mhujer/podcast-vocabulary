@@ -1,128 +1,124 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { createReadStream, statSync, mkdirSync, rmSync } from "fs";
+import { readFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
-import OpenAI from "openai";
 import { db } from "@/db";
 import { transcriptions, episodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import type { TranscriptionSegment } from "@/types/transcription";
+import type { TranscriptionSegment, TranscriptionWord } from "@/types/transcription";
 import { DATA_DIR } from "@/db";
 
 const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
-const MAX_CHUNK_SIZE = 25 * 1024 * 1024; // 25MB
-
-const openai = new OpenAI();
+const WHISPER_MODEL = "/usr/local/share/whisper/ggml-medium.bin";
 
 async function compressAudio(inputPath: string, episodeId: string): Promise<string> {
   const outDir = join(TMP_DIR, episodeId);
   mkdirSync(outDir, { recursive: true });
-  const outPath = join(outDir, "compressed.mp3");
+  const outPath = join(outDir, "compressed.wav");
   await execFileAsync("ffmpeg", [
     "-y", "-i", inputPath,
-    "-ac", "1", "-ar", "16000", "-b:a", "32k",
+    "-ac", "1", "-ar", "16000",
     outPath,
   ]);
   return outPath;
 }
 
-interface AudioChunk {
-  path: string;
-  offsetSeconds: number;
+interface WhisperJsonSegment {
+  offsets: { from: number; to: number };
+  text: string;
 }
 
-async function getDuration(filePath: string): Promise<number> {
-  const { stdout } = await execFileAsync("ffprobe", [
-    "-v", "quiet",
-    "-show_entries", "format=duration",
-    "-of", "csv=p=0",
-    filePath,
-  ]);
-  return parseFloat(stdout.trim());
+interface WhisperJsonOutput {
+  transcription: WhisperJsonSegment[];
 }
 
-async function splitAudio(compressedPath: string, episodeId: string): Promise<AudioChunk[]> {
-  const size = statSync(compressedPath).size;
-  if (size <= MAX_CHUNK_SIZE) {
-    return [{ path: compressedPath, offsetSeconds: 0 }];
+function groupWordsIntoSegments(wordSegments: WhisperJsonSegment[]): TranscriptionSegment[] {
+  if (wordSegments.length === 0) return [];
+
+  const segments: TranscriptionSegment[] = [];
+  let currentWords: TranscriptionWord[] = [];
+  let segmentStart = 0;
+
+  for (const ws of wordSegments) {
+    const word: TranscriptionWord = {
+      start: ws.offsets.from / 1000,
+      end: ws.offsets.to / 1000,
+      word: ws.text,
+    };
+
+    if (currentWords.length === 0) {
+      segmentStart = word.start;
+    }
+
+    currentWords.push(word);
+
+    // Split on sentence-ending punctuation
+    const trimmed = ws.text.trim();
+    if (trimmed.endsWith(".") || trimmed.endsWith("!") || trimmed.endsWith("?")) {
+      segments.push({
+        start: segmentStart,
+        end: word.end,
+        text: currentWords.map((w) => w.word).join("").trim(),
+        words: currentWords,
+      });
+      currentWords = [];
+    }
   }
 
-  const duration = await getDuration(compressedPath);
-  const numChunks = Math.ceil(size / MAX_CHUNK_SIZE);
-  const chunkDuration = duration / numChunks;
-  const chunks: AudioChunk[] = [];
-  const outDir = join(TMP_DIR, episodeId);
-
-  for (let i = 0; i < numChunks; i++) {
-    const start = i * chunkDuration;
-    const outPath = join(outDir, `chunk_${i}.mp3`);
-    await execFileAsync("ffmpeg", [
-      "-y", "-i", compressedPath,
-      "-ss", String(start), "-t", String(chunkDuration),
-      "-c", "copy",
-      outPath,
-    ]);
-    chunks.push({ path: outPath, offsetSeconds: start });
+  // Flush remaining words
+  if (currentWords.length > 0) {
+    segments.push({
+      start: segmentStart,
+      end: currentWords[currentWords.length - 1].end,
+      text: currentWords.map((w) => w.word).join("").trim(),
+      words: currentWords,
+    });
   }
-  return chunks;
-}
 
-async function transcribeChunk(chunkPath: string): Promise<TranscriptionSegment[]> {
-  const response = await openai.audio.transcriptions.create({
-    file: createReadStream(chunkPath),
-    model: "whisper-1",
-    language: "de",
-    response_format: "verbose_json",
-    timestamp_granularities: ["segment"],
-  });
-
-  return (response.segments ?? []).map((seg) => ({
-    start: seg.start,
-    end: seg.end,
-    text: seg.text,
-  }));
+  return segments;
 }
 
 export async function transcribeEpisode(transcriptionId: string, episodeId: string): Promise<void> {
   const tmpDir = join(TMP_DIR, episodeId);
 
   try {
-    // Set status to in_progress
     await db.update(transcriptions)
       .set({ status: "in_progress" })
       .where(eq(transcriptions.id, transcriptionId));
 
-    // Get episode to find audio file
     const [episode] = await db.select().from(episodes).where(eq(episodes.id, episodeId));
     if (!episode?.filePath) {
       throw new Error("Episode audio file not found");
     }
 
-    // Compress
+    // Compress to mono 16kHz WAV for whisper.cpp
     const compressedPath = await compressAudio(episode.filePath, episodeId);
 
-    // Split if needed
-    const chunks = await splitAudio(compressedPath, episodeId);
+    // Output file path (whisper-cli appends .json)
+    const outputBase = join(tmpDir, "output");
 
-    // Transcribe each chunk and stitch
-    const allSegments: TranscriptionSegment[] = [];
-    for (const chunk of chunks) {
-      const segments = await transcribeChunk(chunk.path);
-      for (const seg of segments) {
-        allSegments.push({
-          start: seg.start + chunk.offsetSeconds,
-          end: seg.end + chunk.offsetSeconds,
-          text: seg.text,
-        });
-      }
-    }
+    await execFileAsync("whisper-cli", [
+      "-m", WHISPER_MODEL,
+      "-f", compressedPath,
+      "-l", "de",
+      "-ml", "1",
+      "-oj",
+      "-np",
+      "-of", outputBase,
+    ], { maxBuffer: 50 * 1024 * 1024, timeout: 30 * 60 * 1000 });
 
-    // Save
+    // Parse JSON output
+    const jsonPath = outputBase + ".json";
+    const raw = readFileSync(jsonPath, "utf-8");
+    const whisperOutput: WhisperJsonOutput = JSON.parse(raw);
+
+    const segments = groupWordsIntoSegments(whisperOutput.transcription);
+
     await db.update(transcriptions)
       .set({
         status: "completed",
-        segments: JSON.stringify(allSegments),
+        segments: JSON.stringify(segments),
         transcribedAt: new Date().toISOString(),
       })
       .where(eq(transcriptions.id, transcriptionId));
@@ -132,7 +128,6 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       .set({ status: "failed", errorMessage: message })
       .where(eq(transcriptions.id, transcriptionId));
   } finally {
-    // Clean up temp files
     try {
       rmSync(tmpDir, { recursive: true, force: true });
     } catch {

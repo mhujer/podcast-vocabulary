@@ -14,7 +14,7 @@ interface TranscriptState {
 }
 
 export function EpisodeTranscript() {
-  const { currentEpisode, currentTime, playSegment } = usePlayer();
+  const { currentEpisode, currentTime, seek } = usePlayer();
   const [state, setState] = useState<TranscriptState | null>(null);
   const episodeId = currentEpisode?.id ?? null;
   const abortRef = useRef<AbortController | null>(null);
@@ -78,7 +78,7 @@ export function EpisodeTranscript() {
       <TranscriptDisplay
         segments={state.segments}
         currentTime={currentTime}
-        onSegmentClick={(seg) => playSegment(seg.start, seg.end)}
+        onSeek={(time) => seek(time)}
       />
     </div>
   );
