@@ -6,27 +6,33 @@ import { transcribeEpisode } from "@/lib/transcription-service";
 
 export async function POST(request: Request) {
   const { episodeId } = await request.json();
+  console.log("[transcriptions/POST] episodeId:", episodeId);
 
   // Validate episode exists and is downloaded
   const [episode] = await db.select().from(episodes).where(eq(episodes.id, episodeId));
   if (!episode) {
+    console.log("[transcriptions/POST] episode not found");
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
   }
   if (!episode.filePath) {
+    console.log("[transcriptions/POST] episode not downloaded, filePath:", episode.filePath);
     return NextResponse.json({ error: "Episode not downloaded" }, { status: 400 });
   }
+  console.log("[transcriptions/POST] episode filePath:", episode.filePath);
 
   // Check for existing pending/in_progress transcription
   const [existing] = await db.select().from(transcriptions)
     .where(eq(transcriptions.episodeId, episodeId));
 
   if (existing) {
+    console.log("[transcriptions/POST] existing transcription:", existing.id, "status:", existing.status);
     if (existing.status === "pending" || existing.status === "in_progress") {
       return NextResponse.json({ error: "Transcription already in progress" }, { status: 409 });
     }
     // Delete failed transcription to allow retry
     if (existing.status === "failed") {
       await db.delete(transcriptions).where(eq(transcriptions.id, existing.id));
+      console.log("[transcriptions/POST] deleted failed transcription:", existing.id);
     }
     // If completed, don't re-transcribe
     if (existing.status === "completed") {
@@ -38,9 +44,12 @@ export async function POST(request: Request) {
   const [row] = await db.insert(transcriptions)
     .values({ episodeId, status: "pending" })
     .returning();
+  console.log("[transcriptions/POST] created transcription:", row.id, "— starting transcribeEpisode");
 
   // Fire-and-forget
-  transcribeEpisode(row.id, episodeId).catch(console.error);
+  transcribeEpisode(row.id, episodeId).catch((err) =>
+    console.error("[transcriptions/POST] transcribeEpisode unhandled error:", err)
+  );
 
   return NextResponse.json({ id: row.id }, { status: 202 });
 }

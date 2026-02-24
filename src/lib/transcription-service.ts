@@ -1,6 +1,6 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { readFileSync, mkdirSync, rmSync } from "fs";
+import { readFileSync, mkdirSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { db } from "@/db";
 import { transcriptions, episodes } from "@/db/schema";
@@ -11,6 +11,10 @@ import { DATA_DIR } from "@/db";
 const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
 const WHISPER_MODEL = "/data/whisper/ggml-medium.bin";
+
+function log(...args: unknown[]) {
+  console.log("[transcription-service]", ...args);
+}
 
 async function compressAudio(inputPath: string, episodeId: string): Promise<string> {
   const outDir = join(TMP_DIR, episodeId);
@@ -81,6 +85,7 @@ function groupWordsIntoSegments(wordSegments: WhisperJsonSegment[]): Transcripti
 
 export async function transcribeEpisode(transcriptionId: string, episodeId: string): Promise<void> {
   const tmpDir = join(TMP_DIR, episodeId);
+  log("start", { transcriptionId, episodeId });
 
   try {
     await db.update(transcriptions)
@@ -91,14 +96,17 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
     if (!episode?.filePath) {
       throw new Error("Episode audio file not found");
     }
+    log("audio file:", episode.filePath, "exists:", existsSync(episode.filePath));
+    log("whisper model:", WHISPER_MODEL, "exists:", existsSync(WHISPER_MODEL));
 
     // Compress to mono 16kHz WAV for whisper.cpp
+    log("compressing audio...");
     const compressedPath = await compressAudio(episode.filePath, episodeId);
+    log("compressed to:", compressedPath, "exists:", existsSync(compressedPath));
 
     // Output file path (whisper-cli appends .json)
     const outputBase = join(tmpDir, "output");
-
-    await execFileAsync("whisper-cli", [
+    const whisperArgs = [
       "-m", WHISPER_MODEL,
       "-f", compressedPath,
       "-l", "de",
@@ -106,14 +114,32 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       "-oj",
       "-np",
       "-of", outputBase,
-    ], { maxBuffer: 50 * 1024 * 1024, timeout: 30 * 60 * 1000 });
+    ];
+    log("running whisper-cli with args:", whisperArgs.join(" "));
+
+    try {
+      const { stdout, stderr } = await execFileAsync("whisper-cli", whisperArgs, {
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 30 * 60 * 1000,
+      });
+      if (stdout) log("whisper stdout:", stdout.slice(0, 2000));
+      if (stderr) log("whisper stderr:", stderr.slice(0, 2000));
+    } catch (execError: unknown) {
+      const e = execError as { stdout?: string; stderr?: string; code?: number; message?: string };
+      log("whisper-cli failed, code:", e.code);
+      if (e.stdout) log("whisper stdout:", e.stdout.slice(0, 2000));
+      if (e.stderr) log("whisper stderr:", e.stderr.slice(0, 2000));
+      throw new Error(`whisper-cli failed (code ${e.code}): ${e.stderr || e.message}`);
+    }
 
     // Parse JSON output
     const jsonPath = outputBase + ".json";
+    log("reading output:", jsonPath, "exists:", existsSync(jsonPath));
     const raw = readFileSync(jsonPath, "utf-8");
     const whisperOutput: WhisperJsonOutput = JSON.parse(raw);
 
     const segments = groupWordsIntoSegments(whisperOutput.transcription);
+    log("transcription complete, segments:", segments.length);
 
     await db.update(transcriptions)
       .set({
@@ -124,6 +150,7 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       .where(eq(transcriptions.id, transcriptionId));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    log("ERROR:", message);
     await db.update(transcriptions)
       .set({ status: "failed", errorMessage: message })
       .where(eq(transcriptions.id, transcriptionId));
