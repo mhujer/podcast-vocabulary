@@ -3,7 +3,7 @@ FROM node:24-slim
 ARG APP_DIR=/podcast-vocabulary
 
 # Install git, curl, and python3 for Claude Code (python3 needed for custom statusline)
-RUN apt-get update && apt-get install -y git curl python3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl python3 ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Set home for non-root user
 ENV HOME=/home/node

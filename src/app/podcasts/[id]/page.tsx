@@ -3,6 +3,7 @@ import { podcasts, episodes } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { EpisodeList } from "@/components/episode-list";
+import { EpisodeTranscript } from "@/components/episode-transcript";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
@@ -42,6 +43,7 @@ export default async function PodcastPage({
         {episodeList.length} episodes
       </p>
       <EpisodeList episodes={episodeList} podcast={podcast} />
+      <EpisodeTranscript />
     </main>
   );
 }

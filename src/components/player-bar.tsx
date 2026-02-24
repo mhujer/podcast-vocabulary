@@ -26,6 +26,7 @@ export function PlayerBar() {
     playbackSpeed,
     currentTime,
     duration,
+    segmentEnd,
     togglePlayPause,
     seek,
     rewind,
@@ -61,37 +62,41 @@ export function PlayerBar() {
 
         {/* Controls */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => rewind(10)} title="Rewind 10s">
-            <RotateCcw className="h-4 w-4" />
-          </Button>
+          {!segmentEnd && (
+            <Button variant="ghost" size="icon" onClick={() => rewind(10)} title="Rewind 10s">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={togglePlayPause}>
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </Button>
-          <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={decreaseSpeed}
-              disabled={currentSpeedIndex <= 0}
-              title="Decrease speed"
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-            <span className="text-xs min-w-[3rem] text-center select-none">
-              {playbackSpeed.toFixed(1)}x
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={increaseSpeed}
-              disabled={currentSpeedIndex >= SPEED_OPTIONS.length - 1}
-              title="Increase speed"
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </div>
+          {!segmentEnd && (
+            <div className="flex items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={decreaseSpeed}
+                disabled={currentSpeedIndex <= 0}
+                title="Decrease speed"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="text-xs min-w-[3rem] text-center select-none">
+                {playbackSpeed.toFixed(1)}x
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={increaseSpeed}
+                disabled={currentSpeedIndex >= SPEED_OPTIONS.length - 1}
+                title="Increase speed"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Time + slider */}

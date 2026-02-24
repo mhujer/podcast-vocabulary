@@ -17,11 +17,13 @@ interface PlayerState {
   playbackSpeed: number;
   currentTime: number;
   duration: number;
+  segmentEnd: number | null;
   play: (episode: Episode, podcast: Podcast) => void;
   togglePlayPause: () => void;
   seek: (time: number) => void;
   rewind: (seconds: number) => void;
   setSpeed: (speed: number) => void;
+  playSegment: (startTime: number, endTime: number) => void;
 }
 
 export const PlayerContext = createContext<PlayerState | null>(null);
@@ -36,6 +38,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [segmentEnd, setSegmentEnd] = useState<number | null>(null);
+  const segmentEndRef = useRef<number | null>(null);
   const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentEpisodeRef = useRef<Episode | null>(null);
 
@@ -51,6 +55,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     audio.addEventListener("timeupdate", () => {
       setCurrentTime(audio.currentTime);
+      if (segmentEndRef.current !== null && audio.currentTime >= segmentEndRef.current) {
+        audio.pause();
+        segmentEndRef.current = null;
+        setSegmentEnd(null);
+      }
     });
     audio.addEventListener("loadedmetadata", () => {
       setDuration(audio.duration);
@@ -128,6 +137,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      segmentEndRef.current = null;
+      setSegmentEnd(null);
       audio.play().catch(console.error);
     } else {
       audio.pause();
@@ -137,6 +148,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const seek = useCallback((time: number) => {
     const audio = audioRef.current;
     if (audio) {
+      segmentEndRef.current = null;
+      setSegmentEnd(null);
       audio.currentTime = time;
       setCurrentTime(time);
     }
@@ -145,6 +158,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const rewind = useCallback((seconds: number) => {
     const audio = audioRef.current;
     if (audio) {
+      segmentEndRef.current = null;
+      setSegmentEnd(null);
       audio.currentTime = Math.max(0, audio.currentTime - seconds);
       setCurrentTime(audio.currentTime);
     }
@@ -168,6 +183,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const playSegment = useCallback((startTime: number, endTime: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = startTime;
+    setCurrentTime(startTime);
+    segmentEndRef.current = endTime;
+    setSegmentEnd(endTime);
+    audio.play().catch(console.error);
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -182,6 +207,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         seek,
         rewind,
         setSpeed,
+        segmentEnd,
+        playSegment,
       }}
     >
       {children}
