@@ -117,6 +117,9 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
     ];
     log("running whisper-cli with args:", whisperArgs.join(" "));
 
+    const startTime = Date.now();
+    log("whisper started at:", new Date(startTime).toISOString());
+
     try {
       const { stdout, stderr } = await execFileAsync("whisper-cli", whisperArgs, {
         maxBuffer: 50 * 1024 * 1024,
@@ -130,6 +133,19 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       if (e.stdout) log("whisper stdout:", e.stdout.slice(0, 2000));
       if (e.stderr) log("whisper stderr:", e.stderr.slice(0, 2000));
       throw new Error(`whisper-cli failed (code ${e.code}): ${e.stderr || e.message}`);
+    }
+
+    const endTime = Date.now();
+    const durationSec = (endTime - startTime) / 1000;
+    const durationMin = durationSec / 60;
+
+    log("whisper finished at:", new Date(endTime).toISOString());
+    log(`transcription took ${durationMin.toFixed(1)} min (${durationSec.toFixed(0)} sec)`);
+
+    if (episode.duration != null) {
+      const audioMin = episode.duration / 60;
+      const ratio = durationMin / audioMin;
+      log(`audio length: ${audioMin.toFixed(1)} min, ratio: ${ratio.toFixed(2)} min transcription per 1 min audio`);
     }
 
     // Parse JSON output
