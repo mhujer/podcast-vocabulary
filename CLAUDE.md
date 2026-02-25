@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## General
 - This app is only for me, so always show the full error message, not a user-friendly message
-- Add console.log to backend or frontend code to make it easier to debug issues (I'm following the server output)  
+- Add console.log to backend or frontend code to make it easier to debug issues (I'm following the server output)
 
 ## Commands
 
@@ -47,3 +47,7 @@ Always run ESLint and TypeScript type check after making changes.
 **Transcription**: Manual trigger per episode, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`.
 
 **Player layout**: Persistent audio player at the bottom of page; transcript (karaoke-style highlighting) below.
+
+
+## LLM Models
+- Use `gpt-5.2` for all OpenAI API calls (reasoning model, does not support temperature)

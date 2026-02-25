@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlayer } from "@/hooks/use-player";
 import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
 import { FlashcardPanel } from "@/components/flashcard-panel";
-import { CreateFlashcardButton } from "@/components/create-flashcard-button";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Plus } from "lucide-react";
 import type { TranscriptionSegment } from "@/types/transcription";
 import type { Flashcard } from "@/db/schema";
 
@@ -25,6 +25,8 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const [selectedWords, setSelectedWords] = useState<Map<number, Set<number>>>(new Map());
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [creating, setCreating] = useState(false);
+  const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
+  const [bubblePos, setBubblePos] = useState<{ top: number; left: number } | null>(null);
 
   // Fetch transcription
   useEffect(() => {
@@ -119,6 +121,27 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
     return null;
   }, [selectedWords, state?.segments]);
 
+  // Compute floating bubble position from selected word elements
+  useLayoutEffect(() => {
+    const container = transcriptContainerRef.current;
+    if (!container || !getSelectedText()) {
+      setBubblePos(null);
+      return;
+    }
+    const spans = container.querySelectorAll<HTMLElement>("[data-selected-word]");
+    if (spans.length === 0) {
+      setBubblePos(null);
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const lastSpan = spans[spans.length - 1];
+    const spanRect = lastSpan.getBoundingClientRect();
+    setBubblePos({
+      top: spanRect.bottom - containerRect.top + 4,
+      left: spanRect.right - containerRect.left + 8,
+    });
+  }, [selectedWords, getSelectedText]);
+
   const handleCreate = useCallback(async () => {
     const sel = getSelectedText();
     if (!sel || !episodeId) return;
@@ -194,17 +217,13 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
 
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold">Transcript</h2>
-        <CreateFlashcardButton
-          disabled={!hasSelection}
-          loading={creating}
-          onClick={handleCreate}
-        />
-      </div>
+      <h2 className="text-lg font-semibold mb-2">Transcript</h2>
 
       <div className={`flex gap-4`}>
-        <div className={showPanel ? "flex-1 min-w-0" : "w-full"}>
+        <div
+          ref={transcriptContainerRef}
+          className={`relative ${showPanel ? "flex-1 min-w-0" : "w-full"}`}
+        >
           <TranscriptDisplay
             segments={state.segments}
             currentTime={currentTime}
@@ -212,6 +231,27 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
             selectedWords={selectedWords}
             onWordToggle={handleWordToggle}
           />
+          {hasSelection && bubblePos && (
+            <div
+              className="absolute z-50"
+              style={{ top: bubblePos.top, left: bubblePos.left }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={creating}
+                onClick={handleCreate}
+                className="shadow-md"
+              >
+                {creating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Create Flashcard
+              </Button>
+            </div>
+          )}
         </div>
 
         {showPanel && (

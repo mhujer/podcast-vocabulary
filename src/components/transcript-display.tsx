@@ -137,6 +137,7 @@ function VocabWords({
           <span
             key={i}
             className={className}
+            data-selected-word={isSelected ? "" : undefined}
             onClick={(e) => {
               e.stopPropagation();
               onWordToggle?.(segIndex, currentWordIdx);
