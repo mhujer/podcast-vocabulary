@@ -161,7 +161,11 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
       });
       if (res.ok) {
         const card = await res.json();
-        setFlashcards((prev) => [...prev, card]);
+        setFlashcards((prev) => {
+          const next = [...prev, card];
+          next.sort((a, b) => a.segmentIndex - b.segmentIndex || a.createdAt.localeCompare(b.createdAt));
+          return next;
+        });
         setSelectedWords(new Map());
       } else {
         const err = await res.text();
@@ -212,6 +216,9 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
 
   if (!state.segments) return null;
 
+  const activeSegmentIndex = state.segments.findIndex(
+    (seg) => seg.start <= currentTime && currentTime < seg.end
+  );
   const hasSelection = getSelectedText() !== null;
   const showPanel = flashcards.length > 0;
 
@@ -259,6 +266,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
             <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
             <FlashcardPanel
               flashcards={flashcards}
+              activeSegmentIndex={activeSegmentIndex}
               onUpdate={handleFlashcardUpdate}
               onDelete={handleFlashcardDelete}
             />

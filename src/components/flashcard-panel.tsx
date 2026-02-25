@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,13 +8,37 @@ import type { Flashcard } from "@/db/schema";
 
 export function FlashcardPanel({
   flashcards,
+  activeSegmentIndex,
   onUpdate,
   onDelete,
 }: {
   flashcards: Flashcard[];
+  activeSegmentIndex: number;
   onUpdate: (id: string, field: "front" | "back", value: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const groupRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  const setGroupRef = useCallback(
+    (segIdx: number, el: HTMLDivElement | null) => {
+      if (el) {
+        groupRefs.current.set(segIdx, el);
+      } else {
+        groupRefs.current.delete(segIdx);
+      }
+    },
+    []
+  );
+
+  // Auto-scroll to active segment group
+  useEffect(() => {
+    if (activeSegmentIndex < 0) return;
+    const el = groupRefs.current.get(activeSegmentIndex);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [activeSegmentIndex]);
+
   if (flashcards.length === 0) {
     return (
       <div className="text-sm text-muted-foreground p-4">
@@ -31,11 +55,22 @@ export function FlashcardPanel({
     grouped.set(card.segmentIndex, list);
   }
 
+  // Sort groups by segment index
+  const sortedGroups = [...grouped.entries()].sort(([a], [b]) => a - b);
+
   return (
     <ScrollArea className="h-[60vh]">
       <div className="space-y-4 p-2">
-        {[...grouped.entries()].map(([segIdx, cards]) => (
-          <div key={segIdx} className="space-y-2">
+        {sortedGroups.map(([segIdx, cards]) => (
+          <div
+            key={segIdx}
+            ref={(el) => setGroupRef(segIdx, el)}
+            className={`space-y-2 rounded-md p-1 transition-colors ${
+              segIdx === activeSegmentIndex
+                ? "bg-accent/40"
+                : ""
+            }`}
+          >
             <div className="text-xs text-muted-foreground font-medium">
               Segment {segIdx + 1}
             </div>
