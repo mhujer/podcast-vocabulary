@@ -121,7 +121,7 @@ function VocabWords({
 }) {
   // Use word-level data if available, otherwise split on whitespace
   const words: { text: string; start?: number; end?: number }[] = seg.words
-    ? seg.words.map((w) => ({ text: w.word, start: w.start, end: w.end }))
+    ? seg.words.map((w) => ({ text: w.word.trim(), start: w.start, end: w.end }))
     : seg.text.split(/(\s+)/).map((token) => ({ text: token }));
 
   let wordIdx = 0;
@@ -155,6 +155,7 @@ function VocabWords({
               onWordToggle?.(segIndex, currentWordIdx);
             }}
           >
+            {seg.words && currentWordIdx > 0 && " "}
             {w.text}
           </span>
         );
