@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlayer } from "@/hooks/use-player";
-import { TranscriptDisplay } from "@/components/transcript-display";
+import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
 import { VocabModeToggle } from "@/components/vocab-mode-toggle";
 import { FlashcardPanel } from "@/components/flashcard-panel";
 import { CreateFlashcardButton } from "@/components/create-flashcard-button";
@@ -105,15 +105,13 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
       const seg = state.segments[segIdx];
       if (!seg) continue;
 
-      // Get word tokens
+      // Get word tokens (merge sub-word tokens into whole words)
       const words: string[] = seg.words
-        ? seg.words.map((w) => w.word)
+        ? mergeWhisperTokens(seg.words).map((w) => w.text)
         : seg.text.split(/\s+/).filter(Boolean);
 
       const sorted = [...wordIndices].sort((a, b) => a - b);
-      const selectedTexts = sorted.map((i) => words[i]).filter(Boolean);
-      // Clean up whitespace in word tokens (whisper often prepends spaces)
-      const cleaned = selectedTexts.map((w) => w.trim()).filter(Boolean);
+      const cleaned = sorted.map((i) => words[i]).filter(Boolean);
 
       return {
         segmentIndex: segIdx,

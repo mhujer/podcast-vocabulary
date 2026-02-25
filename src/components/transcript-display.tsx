@@ -104,6 +104,28 @@ export function TranscriptDisplay({
   );
 }
 
+/**
+ * Merge Whisper sub-word tokens into whole words.
+ * Whisper tokens that start with a space (or are the first token) begin a new word;
+ * tokens without leading space are continuations of the previous word.
+ */
+export function mergeWhisperTokens(
+  tokens: { word: string; start: number; end: number }[]
+): { text: string; start: number; end: number }[] {
+  const merged: { text: string; start: number; end: number }[] = [];
+  for (const t of tokens) {
+    if (merged.length > 0 && !t.word.startsWith(" ")) {
+      // Continuation of previous word
+      const last = merged[merged.length - 1];
+      last.text += t.word;
+      last.end = t.end;
+    } else {
+      merged.push({ text: t.word.trim(), start: t.start, end: t.end });
+    }
+  }
+  return merged;
+}
+
 function VocabWords({
   seg,
   segIndex,
@@ -119,9 +141,9 @@ function VocabWords({
   selected?: Set<number>;
   onWordToggle?: (segmentIndex: number, wordIndex: number) => void;
 }) {
-  // Use word-level data if available, otherwise split on whitespace
+  // Merge sub-word tokens into whole words, or split on whitespace as fallback
   const words: { text: string; start?: number; end?: number }[] = seg.words
-    ? seg.words.map((w) => ({ text: w.word.trim(), start: w.start, end: w.end }))
+    ? mergeWhisperTokens(seg.words)
     : seg.text.split(/(\s+)/).map((token) => ({ text: token }));
 
   let wordIdx = 0;
