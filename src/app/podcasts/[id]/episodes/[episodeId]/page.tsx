@@ -36,7 +36,7 @@ export default async function EpisodeDetailPage({
     .where(eq(transcriptions.episodeId, episodeId));
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8">
+    <main className="max-w-5xl mx-auto px-4 py-8">
       <Link
         href={`/podcasts/${id}`}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"

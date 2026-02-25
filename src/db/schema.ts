@@ -45,7 +45,22 @@ export const playbackSettings = sqliteTable("playback_settings", {
   playbackSpeed: real("playback_speed").notNull().default(1.0),
 });
 
+export const flashcards = sqliteTable("flashcards", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  episodeId: text("episode_id")
+    .notNull()
+    .references(() => episodes.id, { onDelete: "cascade" }),
+  segmentIndex: integer("segment_index").notNull(),
+  front: text("front").notNull(),
+  back: text("back").notNull(),
+  selectedText: text("selected_text").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export type Podcast = InferSelectModel<typeof podcasts>;
 export type Episode = InferSelectModel<typeof episodes>;
 export type Transcription = InferSelectModel<typeof transcriptions>;
 export type PlaybackSettings = InferSelectModel<typeof playbackSettings>;
+export type Flashcard = InferSelectModel<typeof flashcards>;

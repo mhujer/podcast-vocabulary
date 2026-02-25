@@ -14,10 +14,16 @@ export function TranscriptDisplay({
   segments,
   currentTime,
   onSeek,
+  vocabMode = false,
+  selectedWords,
+  onWordToggle,
 }: {
   segments: TranscriptionSegment[];
   currentTime: number;
   onSeek: (time: number) => void;
+  vocabMode?: boolean;
+  selectedWords?: Map<number, Set<number>>;
+  onWordToggle?: (segmentIndex: number, wordIndex: number) => void;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   const activeIndex = segments.findIndex(
@@ -37,16 +43,35 @@ export function TranscriptDisplay({
             <div
               key={i}
               ref={isActive ? activeRef : undefined}
-              className={`flex gap-3 px-2 py-1.5 rounded cursor-pointer hover:bg-accent/50 transition-colors ${
+              className={`flex gap-3 px-2 py-1.5 rounded transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
-              }`}
-              onClick={() => onSeek(seg.start)}
+              } ${!vocabMode ? "cursor-pointer hover:bg-accent/50" : ""}`}
+              onClick={!vocabMode ? () => onSeek(seg.start) : undefined}
             >
-              <span className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums">
+              <span
+                className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums cursor-pointer hover:text-foreground"
+                onClick={
+                  vocabMode
+                    ? (e) => {
+                        e.stopPropagation();
+                        onSeek(seg.start);
+                      }
+                    : undefined
+                }
+              >
                 {formatTimestamp(seg.start)}
               </span>
               <span className="text-sm">
-                {isActive && seg.words ? (
+                {vocabMode ? (
+                  <VocabWords
+                    seg={seg}
+                    segIndex={i}
+                    isActive={isActive}
+                    currentTime={currentTime}
+                    selected={selectedWords?.get(i)}
+                    onWordToggle={onWordToggle}
+                  />
+                ) : isActive && seg.words ? (
                   seg.words.map((w, wi) => {
                     const isActiveWord =
                       w.start <= currentTime && currentTime < w.end;
@@ -76,5 +101,64 @@ export function TranscriptDisplay({
         })}
       </div>
     </ScrollArea>
+  );
+}
+
+function VocabWords({
+  seg,
+  segIndex,
+  isActive,
+  currentTime,
+  selected,
+  onWordToggle,
+}: {
+  seg: TranscriptionSegment;
+  segIndex: number;
+  isActive: boolean;
+  currentTime: number;
+  selected?: Set<number>;
+  onWordToggle?: (segmentIndex: number, wordIndex: number) => void;
+}) {
+  // Use word-level data if available, otherwise split on whitespace
+  const words: { text: string; start?: number; end?: number }[] = seg.words
+    ? seg.words.map((w) => ({ text: w.word, start: w.start, end: w.end }))
+    : seg.text.split(/(\s+)/).map((token) => ({ text: token }));
+
+  let wordIdx = 0;
+  return (
+    <>
+      {words.map((w, i) => {
+        // Whitespace-only tokens from split are not clickable
+        if (!seg.words && /^\s+$/.test(w.text)) {
+          return <span key={i}>{w.text}</span>;
+        }
+
+        const currentWordIdx = wordIdx++;
+        const isSelected = selected?.has(currentWordIdx) ?? false;
+        const isActiveWord =
+          isActive &&
+          w.start !== undefined &&
+          w.end !== undefined &&
+          w.start <= currentTime &&
+          currentTime < w.end;
+
+        let className = "cursor-pointer rounded px-0.5 hover:bg-accent/50";
+        if (isSelected) className += " bg-yellow-300/50";
+        if (isActiveWord) className += " bg-primary/30";
+
+        return (
+          <span
+            key={i}
+            className={className}
+            onClick={(e) => {
+              e.stopPropagation();
+              onWordToggle?.(segIndex, currentWordIdx);
+            }}
+          >
+            {w.text}
+          </span>
+        );
+      })}
+    </>
   );
 }
