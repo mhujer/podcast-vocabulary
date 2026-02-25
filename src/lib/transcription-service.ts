@@ -1,6 +1,6 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promisify } from "util";
-import { readFileSync, mkdirSync, rmSync, existsSync } from "fs";
+import { readFileSync, mkdirSync, rmSync, existsSync, statSync } from "fs";
 import { join } from "path";
 import { db } from "@/db";
 import { transcriptions, episodes } from "@/db/schema";
@@ -112,28 +112,56 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       "-l", "de",
       "-ml", "1",
       "-oj",
-      "-np",
+      "-pp",
+      "-debug",
       "-of", outputBase,
     ];
     log("running whisper-cli with args:", whisperArgs.join(" "));
 
+    // Log compressed WAV size to help correlate OOM kills with audio size
+    const wavStat = statSync(compressedPath);
+    log("compressed WAV size:", (wavStat.size / 1024 / 1024).toFixed(1), "MB");
+
     const startTime = Date.now();
     log("whisper started at:", new Date(startTime).toISOString());
 
-    try {
-      const { stdout, stderr } = await execFileAsync("whisper-cli", whisperArgs, {
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: 30 * 60 * 1000,
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn("whisper-cli", whisperArgs, {
+        stdio: ["ignore", "pipe", "pipe"],
       });
-      if (stdout) log("whisper stdout:", stdout.slice(0, 2000));
-      if (stderr) log("whisper stderr:", stderr.slice(0, 2000));
-    } catch (execError: unknown) {
-      const e = execError as { stdout?: string; stderr?: string; code?: number; message?: string };
-      log("whisper-cli failed, code:", e.code);
-      if (e.stdout) log("whisper stdout:", e.stdout.slice(0, 2000));
-      if (e.stderr) log("whisper stderr:", e.stderr.slice(0, 2000));
-      throw new Error(`whisper-cli failed (code ${e.code}): ${e.stderr || e.message}`);
-    }
+
+      let stderrBuf = "";
+
+      child.stdout.on("data", (data: Buffer) => {
+        for (const line of data.toString().split("\n")) {
+          if (line.trim()) log("[whisper stdout]", line);
+        }
+      });
+
+      child.stderr.on("data", (data: Buffer) => {
+        const chunk = data.toString();
+        stderrBuf += chunk;
+        for (const line of chunk.split("\n")) {
+          if (line.trim()) log("[whisper stderr]", line);
+        }
+      });
+
+      child.on("close", (code, signal) => {
+        log("whisper-cli exited, code:", code, "signal:", signal);
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(
+            `whisper-cli failed (code ${code}, signal ${signal}): ${stderrBuf.slice(0, 2000)}`
+          ));
+        }
+      });
+
+      child.on("error", (err) => {
+        log("whisper-cli spawn error:", err.message);
+        reject(err);
+      });
+    });
 
     const endTime = Date.now();
     const durationSec = (endTime - startTime) / 1000;
