@@ -13,10 +13,10 @@ interface TranscriptState {
   segments: TranscriptionSegment[] | null;
 }
 
-export function EpisodeTranscript() {
+export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: string } = {}) {
   const { currentEpisode, currentTime, seek } = usePlayer();
   const [state, setState] = useState<TranscriptState | null>(null);
-  const episodeId = currentEpisode?.id ?? null;
+  const episodeId = episodeIdProp ?? currentEpisode?.id ?? null;
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {

@@ -1,9 +1,8 @@
 import { db } from "@/db";
-import { podcasts, episodes } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { podcasts, episodes, transcriptions } from "@/db/schema";
+import { eq, desc, count } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { EpisodeList } from "@/components/episode-list";
-import { EpisodeTranscript } from "@/components/episode-transcript";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
@@ -23,11 +22,51 @@ export default async function PodcastPage({
 
   if (!podcast) notFound();
 
-  const episodeList = await db
+  // Total episode count
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(episodes)
+    .where(eq(episodes.podcastId, id));
+
+  // Last 50 by date
+  const recent = await db
     .select()
     .from(episodes)
     .where(eq(episodes.podcastId, id))
-    .orderBy(desc(episodes.pubDate));
+    .orderBy(desc(episodes.pubDate))
+    .limit(50);
+
+  const recentIds = new Set(recent.map((e) => e.id));
+
+  // Older episodes that are downloaded or transcribed
+  const transcribedEpisodeIds = await db
+    .select({ episodeId: transcriptions.episodeId })
+    .from(transcriptions);
+  const transcribedSet = new Set(transcribedEpisodeIds.map((r) => r.episodeId));
+
+  const olderDownloadedOrTranscribed = await db
+    .select()
+    .from(episodes)
+    .where(eq(episodes.podcastId, id))
+    .orderBy(desc(episodes.pubDate))
+    .then((rows) =>
+      rows.filter(
+        (e) =>
+          !recentIds.has(e.id) &&
+          (e.filePath !== null || transcribedSet.has(e.id))
+      )
+    );
+
+  // Merge and sort by pubDate DESC
+  const episodeList = [...recent, ...olderDownloadedOrTranscribed].sort(
+    (a, b) => {
+      const da = a.pubDate ?? "";
+      const db_ = b.pubDate ?? "";
+      return db_.localeCompare(da);
+    }
+  );
+
+  const showing = episodeList.length;
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-8">
@@ -40,10 +79,11 @@ export default async function PodcastPage({
       </Link>
       <h1 className="text-2xl font-bold mb-1">{podcast.name}</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        {episodeList.length} episodes
+        {showing < total
+          ? `Showing ${showing} of ${total} episodes`
+          : `${total} episodes`}
       </p>
       <EpisodeList episodes={episodeList} podcast={podcast} />
-      <EpisodeTranscript />
     </main>
   );
 }

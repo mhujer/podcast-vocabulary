@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/hooks/use-player";
 import { Play, Download, Loader2, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import type { Episode, Podcast } from "@/db/schema";
 
 interface TranscriptionStatus {
@@ -127,7 +128,12 @@ export function EpisodeList({
             className={`py-3 flex items-center gap-3 ${isCurrentlyPlaying ? "bg-accent/50 -mx-2 px-2 rounded" : ""}`}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{episode.title}</p>
+              <Link
+                href={`/podcasts/${podcast.id}/episodes/${episode.id}`}
+                className="text-sm font-medium truncate block hover:underline"
+              >
+                {episode.title}
+              </Link>
               <p className="text-xs text-muted-foreground">
                 {episode.pubDate && new Date(episode.pubDate).toLocaleDateString()}
                 {episode.duration && <> &middot; {formatDuration(episode.duration)}</>}
