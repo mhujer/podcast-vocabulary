@@ -17,3 +17,13 @@ sqlite.pragma("foreign_keys = ON");
 
 export const db = drizzle(sqlite, { schema });
 export { DATA_DIR, AUDIO_DIR, DB_PATH };
+
+// Seed from OPML if the podcasts table is empty
+const podcastCount = sqlite.prepare("SELECT COUNT(*) as count FROM podcasts").get() as { count: number } | undefined;
+if (podcastCount && podcastCount.count === 0) {
+  import("@/lib/opml").then(({ importFromOpml }) => {
+    importFromOpml().catch(console.error);
+  }).catch(() => {
+    // OPML module not available yet (e.g. during build)
+  });
+}

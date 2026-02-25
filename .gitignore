@@ -38,6 +38,7 @@ yarn-error.log*
 
 # data (SQLite DB + audio files)
 data/
+!data/subscribed.opml
 
 # typescript
 *.tsbuildinfo

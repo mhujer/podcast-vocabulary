@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { podcasts, episodes } from "@/db/schema";
 import { desc, count, eq } from "drizzle-orm";
 import { addPodcast } from "@/lib/podcast-service";
+import { writeOpmlFile } from "@/lib/opml";
 
 export async function GET() {
   const result = await db
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const podcast = await addPodcast(rssUrl);
+    writeOpmlFile().catch(console.error);
     return NextResponse.json(podcast, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
