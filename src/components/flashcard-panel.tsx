@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,14 +30,31 @@ export function FlashcardPanel({
     []
   );
 
-  // Auto-scroll to active segment group
-  useEffect(() => {
-    if (activeSegmentIndex < 0) return;
-    const el = groupRefs.current.get(activeSegmentIndex);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  // Derive segment indices that have flashcards from props (not refs)
+  const flashcardSegmentIndices = useMemo(() => {
+    const indices = new Set<number>();
+    for (const card of flashcards) indices.add(card.segmentIndex);
+    return indices;
+  }, [flashcards]);
+
+  // Find the nearest preceding segment that has flashcards
+  const highlightedSegmentIndex = useMemo(() => {
+    if (activeSegmentIndex < 0) return -1;
+    let bestIdx = -1;
+    for (const idx of flashcardSegmentIndices) {
+      if (idx <= activeSegmentIndex && idx > bestIdx) {
+        bestIdx = idx;
+      }
     }
-  }, [activeSegmentIndex]);
+    return bestIdx;
+  }, [activeSegmentIndex, flashcardSegmentIndices]);
+
+  // Auto-scroll to the highlighted group (ref access is safe inside effects)
+  useEffect(() => {
+    if (highlightedSegmentIndex < 0) return;
+    const el = groupRefs.current.get(highlightedSegmentIndex);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [highlightedSegmentIndex]);
 
   if (flashcards.length === 0) {
     return (
@@ -66,7 +83,7 @@ export function FlashcardPanel({
             key={segIdx}
             ref={(el) => setGroupRef(segIdx, el)}
             className={`space-y-2 rounded-md p-1 transition-colors ${
-              segIdx === activeSegmentIndex
+              segIdx === highlightedSegmentIndex
                 ? "bg-accent/40"
                 : ""
             }`}
