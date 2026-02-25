@@ -14,16 +14,14 @@ export function TranscriptDisplay({
   segments,
   currentTime,
   onSeek,
-  vocabMode = false,
   selectedWords,
   onWordToggle,
 }: {
   segments: TranscriptionSegment[];
   currentTime: number;
   onSeek: (time: number) => void;
-  vocabMode?: boolean;
-  selectedWords?: Map<number, Set<number>>;
-  onWordToggle?: (segmentIndex: number, wordIndex: number) => void;
+  selectedWords: Map<number, Set<number>>;
+  onWordToggle: (segmentIndex: number, wordIndex: number) => void;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   const activeIndex = segments.findIndex(
@@ -45,56 +43,23 @@ export function TranscriptDisplay({
               ref={isActive ? activeRef : undefined}
               className={`flex gap-3 px-2 py-1.5 rounded transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
-              } ${!vocabMode ? "cursor-pointer hover:bg-accent/50" : ""}`}
-              onClick={!vocabMode ? () => onSeek(seg.start) : undefined}
+              }`}
             >
               <span
                 className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums cursor-pointer hover:text-foreground"
-                onClick={
-                  vocabMode
-                    ? (e) => {
-                        e.stopPropagation();
-                        onSeek(seg.start);
-                      }
-                    : undefined
-                }
+                onClick={() => onSeek(seg.start)}
               >
                 {formatTimestamp(seg.start)}
               </span>
               <span className="text-sm">
-                {vocabMode ? (
-                  <VocabWords
-                    seg={seg}
-                    segIndex={i}
-                    isActive={isActive}
-                    currentTime={currentTime}
-                    selected={selectedWords?.get(i)}
-                    onWordToggle={onWordToggle}
-                  />
-                ) : isActive && seg.words ? (
-                  seg.words.map((w, wi) => {
-                    const isActiveWord =
-                      w.start <= currentTime && currentTime < w.end;
-                    return (
-                      <span
-                        key={wi}
-                        className={
-                          isActiveWord
-                            ? "bg-primary/30 rounded px-0.5"
-                            : ""
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSeek(w.start);
-                        }}
-                      >
-                        {w.word}
-                      </span>
-                    );
-                  })
-                ) : (
-                  seg.text
-                )}
+                <VocabWords
+                  seg={seg}
+                  segIndex={i}
+                  isActive={isActive}
+                  currentTime={currentTime}
+                  selected={selectedWords.get(i)}
+                  onWordToggle={onWordToggle}
+                />
               </span>
             </div>
           );

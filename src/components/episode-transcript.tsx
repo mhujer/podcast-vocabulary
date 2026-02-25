@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlayer } from "@/hooks/use-player";
 import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
-import { VocabModeToggle } from "@/components/vocab-mode-toggle";
 import { FlashcardPanel } from "@/components/flashcard-panel";
 import { CreateFlashcardButton } from "@/components/create-flashcard-button";
 import { Loader2 } from "lucide-react";
@@ -23,8 +22,6 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const episodeId = episodeIdProp ?? currentEpisode?.id ?? null;
   const abortRef = useRef<AbortController | null>(null);
 
-  // Vocab mode state
-  const [vocabMode, setVocabMode] = useState(false);
   const [selectedWords, setSelectedWords] = useState<Map<number, Set<number>>>(new Map());
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [creating, setCreating] = useState(false);
@@ -193,37 +190,25 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   if (!state.segments) return null;
 
   const hasSelection = getSelectedText() !== null;
-  const showPanel = vocabMode || flashcards.length > 0;
+  const showPanel = flashcards.length > 0;
 
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-lg font-semibold">Transcript</h2>
-        <div className="flex items-center gap-2">
-          {vocabMode && (
-            <CreateFlashcardButton
-              disabled={!hasSelection}
-              loading={creating}
-              onClick={handleCreate}
-            />
-          )}
-          <VocabModeToggle
-            active={vocabMode}
-            onToggle={() => {
-              setVocabMode((v) => !v);
-              setSelectedWords(new Map());
-            }}
-          />
-        </div>
+        <CreateFlashcardButton
+          disabled={!hasSelection}
+          loading={creating}
+          onClick={handleCreate}
+        />
       </div>
 
-      <div className={`flex gap-4 ${showPanel ? "" : ""}`}>
+      <div className={`flex gap-4`}>
         <div className={showPanel ? "flex-1 min-w-0" : "w-full"}>
           <TranscriptDisplay
             segments={state.segments}
             currentTime={currentTime}
             onSeek={(time) => seek(time)}
-            vocabMode={vocabMode}
             selectedWords={selectedWords}
             onWordToggle={handleWordToggle}
           />
