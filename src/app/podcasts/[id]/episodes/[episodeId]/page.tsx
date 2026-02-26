@@ -7,6 +7,7 @@ import { ChevronLeft } from "lucide-react";
 import { EpisodeActions } from "@/components/episode-actions";
 import { EpisodeTranscript } from "@/components/episode-transcript";
 import { CollapsibleDescription } from "@/components/collapsible-description";
+import { SidebarPlayer } from "@/components/sidebar-player";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function EpisodeDetailPage({
     .where(eq(transcriptions.episodeId, episodeId));
 
   return (
-    <main className="flex h-[calc(100vh-6rem)]">
+    <main className="flex h-screen">
       <aside className="w-72 shrink-0 border-r overflow-y-auto p-4 space-y-4">
         <Link
           href={`/podcasts/${id}`}
@@ -58,6 +59,8 @@ export default async function EpisodeDetailPage({
           podcast={podcast}
           transcriptionStatus={transcription?.status ?? null}
         />
+
+        <SidebarPlayer />
 
         {episode.description && (
           <CollapsibleDescription html={episode.description} />

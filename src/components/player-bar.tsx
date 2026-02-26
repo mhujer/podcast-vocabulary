@@ -27,13 +27,14 @@ export function PlayerBar() {
     currentTime,
     duration,
     segmentEnd,
+    hideGlobalPlayer,
     togglePlayPause,
     seek,
     rewind,
     setSpeed,
   } = usePlayer();
 
-  if (!currentEpisode) return null;
+  if (!currentEpisode || hideGlobalPlayer) return null;
 
   const currentSpeedIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
 
