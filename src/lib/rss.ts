@@ -5,7 +5,6 @@ export interface ParsedEpisode {
   title: string;
   description: string | undefined;
   audioUrl: string;
-  imageUrl: string | undefined;
   pubDate: string | undefined;
   duration: number | undefined;
 }
@@ -19,10 +18,7 @@ export interface ParsedFeed {
 
 const parser = new Parser({
   customFields: {
-    item: [
-      ["itunes:duration", "itunesDuration"],
-      ["itunes:image", "itunesImage"],
-    ],
+    item: [["itunes:duration", "itunesDuration"]],
   },
 });
 
@@ -47,23 +43,16 @@ export async function parseFeed(rssUrl: string): Promise<ParsedFeed> {
 
   const episodes: ParsedEpisode[] = (feed.items || [])
     .filter((item) => item.enclosure?.url)
-    .map((item) => {
-      const itemAny = item as unknown as Record<string, unknown>;
-      const itunesImg = itemAny.itunesImage;
-      // itunes:image can be a string or { $: { href: string } }
-      const episodeImage = typeof itunesImg === "string"
-        ? itunesImg
-        : (itunesImg as { $?: { href?: string } } | undefined)?.$?.href;
-      return {
-        guid: item.guid || undefined,
-        title: item.title || "Untitled",
-        description: item.contentSnippet || item.content || undefined,
-        audioUrl: item.enclosure!.url,
-        imageUrl: episodeImage || undefined,
-        pubDate: item.isoDate || item.pubDate || undefined,
-        duration: parseDuration(itemAny.itunesDuration as string | undefined),
-      };
-    })
+    .map((item) => ({
+      guid: item.guid || undefined,
+      title: item.title || "Untitled",
+      description: item.contentSnippet || item.content || undefined,
+      audioUrl: item.enclosure!.url,
+      pubDate: item.isoDate || item.pubDate || undefined,
+      duration: parseDuration(
+        (item as unknown as Record<string, unknown>).itunesDuration as string | undefined
+      ),
+    }))
     .sort((a, b) => {
       if (!a.pubDate || !b.pubDate) return 0;
       return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
