@@ -99,7 +99,7 @@ export function TranscriptDisplay({
   }, [activeIndex]);
 
   return (
-    <ScrollArea className="h-[60vh]" viewportRef={scrollRootRef}>
+    <ScrollArea className="h-full" viewportRef={scrollRootRef}>
       <div className="space-y-1 p-4">
         {segments.map((seg, i) => {
           const isActive = i === activeIndex;

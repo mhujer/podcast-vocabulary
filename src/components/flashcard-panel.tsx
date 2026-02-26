@@ -81,7 +81,7 @@ export function FlashcardPanel({
   const sortedGroups = [...grouped.entries()].sort(([a], [b]) => a - b);
 
   return (
-    <ScrollArea className="h-[60vh]">
+    <ScrollArea className="h-full">
       <div className="space-y-4 p-2">
         {sortedGroups.map(([segIdx, cards]) => (
           <div

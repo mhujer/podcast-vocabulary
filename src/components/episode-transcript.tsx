@@ -225,48 +225,46 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const showPanel = flashcards.length > 0;
 
   return (
-    <div className="mt-6">
-      <h2 className="text-lg font-semibold mb-2">Transcript</h2>
-
-      <div className={`flex gap-4`}>
-        <div
-          ref={transcriptContainerRef}
-          className={`relative ${showPanel ? "flex-1 min-w-0" : "w-full"}`}
-        >
-          <TranscriptDisplay
-            segments={state.segments}
-            currentTime={currentTime}
-            onSeek={(time) => seek(time)}
-            selectedWords={selectedWords}
-            onWordToggle={handleWordToggle}
-            onVisibleSegmentChange={setVisibleSegmentIndex}
-          />
-          {hasSelection && bubblePos && (
-            <div
-              className="absolute z-50"
-              style={{ top: bubblePos.top, left: bubblePos.left }}
+    <div className="flex gap-4 h-full p-4">
+      <div
+        ref={transcriptContainerRef}
+        className={`relative ${showPanel ? "flex-1 min-w-0" : "w-full"} h-full`}
+      >
+        <TranscriptDisplay
+          segments={state.segments}
+          currentTime={currentTime}
+          onSeek={(time) => seek(time)}
+          selectedWords={selectedWords}
+          onWordToggle={handleWordToggle}
+          onVisibleSegmentChange={setVisibleSegmentIndex}
+        />
+        {hasSelection && bubblePos && (
+          <div
+            className="absolute z-50"
+            style={{ top: bubblePos.top, left: bubblePos.left }}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={creating}
+              onClick={handleCreate}
+              className="shadow-md"
             >
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={creating}
-                onClick={handleCreate}
-                className="shadow-md"
-              >
-                {creating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Create Flashcard
-              </Button>
-            </div>
-          )}
-        </div>
+              {creating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              Create Flashcard
+            </Button>
+          </div>
+        )}
+      </div>
 
-        {showPanel && (
-          <div className="w-80 shrink-0">
-            <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
+      {showPanel && (
+        <div className="w-80 shrink-0 h-full flex flex-col">
+          <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
+          <div className="flex-1 min-h-0">
             <FlashcardPanel
               flashcards={flashcards}
               segments={state.segments}
@@ -275,8 +273,8 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
               onDelete={handleFlashcardDelete}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

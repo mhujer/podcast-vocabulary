@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { EpisodeActions } from "@/components/episode-actions";
 import { EpisodeTranscript } from "@/components/episode-transcript";
+import { CollapsibleDescription } from "@/components/collapsible-description";
 
 export const dynamic = "force-dynamic";
 
@@ -36,35 +37,36 @@ export default async function EpisodeDetailPage({
     .where(eq(transcriptions.episodeId, episodeId));
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <Link
-        href={`/podcasts/${id}`}
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ChevronLeft className="h-4 w-4 mr-1" />
-        Back to {podcast.name}
-      </Link>
+    <main className="flex h-[calc(100vh-6rem)]">
+      <aside className="w-72 shrink-0 border-r overflow-y-auto p-4 space-y-4">
+        <Link
+          href={`/podcasts/${id}`}
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back to {podcast.name}
+        </Link>
 
-      <h1 className="text-2xl font-bold mb-1">{episode.title}</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        {episode.pubDate && new Date(episode.pubDate).toLocaleDateString()}
-        {episode.duration && <> &middot; {formatDuration(episode.duration)}</>}
-      </p>
+        <h1 className="text-lg font-bold">{episode.title}</h1>
+        <p className="text-sm text-muted-foreground">
+          {episode.pubDate && new Date(episode.pubDate).toLocaleDateString()}
+          {episode.duration && <> &middot; {formatDuration(episode.duration)}</>}
+        </p>
 
-      <EpisodeActions
-        episode={episode}
-        podcast={podcast}
-        transcriptionStatus={transcription?.status ?? null}
-      />
-
-      {episode.description && (
-        <div
-          className="text-sm text-muted-foreground mt-4 prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: episode.description }}
+        <EpisodeActions
+          episode={episode}
+          podcast={podcast}
+          transcriptionStatus={transcription?.status ?? null}
         />
-      )}
 
-      <EpisodeTranscript episodeId={episodeId} />
+        {episode.description && (
+          <CollapsibleDescription html={episode.description} />
+        )}
+      </aside>
+
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <EpisodeTranscript episodeId={episodeId} />
+      </div>
     </main>
   );
 }
