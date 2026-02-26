@@ -3,6 +3,7 @@ import { podcasts, episodes, transcriptions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft } from "lucide-react";
 import { EpisodeActions } from "@/components/episode-actions";
 import { EpisodeTranscript } from "@/components/episode-transcript";
@@ -48,6 +49,16 @@ export default async function EpisodeDetailPage({
           Back to {podcast.name}
         </Link>
 
+        {(episode.imageUrl || podcast.imageUrl) && (
+          <Image
+            src={(episode.imageUrl || podcast.imageUrl)!}
+            alt=""
+            width={240}
+            height={240}
+            unoptimized
+            className="w-full rounded-lg object-cover"
+          />
+        )}
         <h1 className="text-lg font-bold">{episode.title}</h1>
         <p className="text-sm text-muted-foreground">
           {episode.pubDate && new Date(episode.pubDate).toLocaleDateString()}

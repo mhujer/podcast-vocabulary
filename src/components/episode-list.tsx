@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/hooks/use-player";
-import { Play, Download, Loader2, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Play, Download, Loader2, FileText, CheckCircle, AlertCircle, Music } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Episode, Podcast } from "@/db/schema";
 
 interface TranscriptionStatus {
@@ -127,6 +128,23 @@ export function EpisodeList({
             key={episode.id}
             className={`py-3 flex items-center gap-3 ${isCurrentlyPlaying ? "bg-accent/50 -mx-2 px-2 rounded" : ""}`}
           >
+            {(() => {
+              const imgUrl = episode.imageUrl || podcast.imageUrl;
+              return imgUrl ? (
+                <Image
+                  src={imgUrl}
+                  alt=""
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="w-10 h-10 rounded object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                  <Music className="h-5 w-5 text-muted-foreground" />
+                </div>
+              );
+            })()}
             <div className="flex-1 min-w-0">
               <Link
                 href={`/podcasts/${podcast.id}/episodes/${episode.id}`}

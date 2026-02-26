@@ -67,6 +67,7 @@ export async function addPodcast(rssUrl: string) {
         title: ep.title,
         description: ep.description,
         audioUrl: ep.audioUrl,
+        imageUrl: ep.imageUrl || null,
         pubDate: ep.pubDate,
         duration: ep.duration,
       })
@@ -120,6 +121,7 @@ export async function refreshAllFeeds() {
             title: ep.title,
             description: ep.description,
             audioUrl: ep.audioUrl,
+            imageUrl: ep.imageUrl || null,
             pubDate: ep.pubDate,
             duration: ep.duration,
           })
