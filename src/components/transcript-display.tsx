@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TranscriptionSegment } from "@/types/transcription";
 
@@ -12,6 +12,7 @@ export function formatTimestamp(seconds: number): string {
 
 export function TranscriptDisplay({
   segments,
+  translations,
   currentTime,
   onSeek,
   selectedWords,
@@ -21,6 +22,7 @@ export function TranscriptDisplay({
   scrollToSegmentIndex,
 }: {
   segments: TranscriptionSegment[];
+  translations?: string[] | null;
   currentTime: number;
   onSeek: (time: number) => void;
   selectedWords: Map<number, Set<number>>;
@@ -30,6 +32,7 @@ export function TranscriptDisplay({
   scrollToSegmentIndex?: number | null;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
   const activeIndex = segments.findIndex(
     (seg) => seg.start <= currentTime && currentTime < seg.end
   );
@@ -118,6 +121,8 @@ export function TranscriptDisplay({
       <div className="space-y-1 p-4">
         {segments.map((seg, i) => {
           const isActive = i === activeIndex;
+          const translation = translations?.[i];
+          const isHovered = hoveredSegment === i;
           return (
             <div
               key={i}
@@ -125,9 +130,11 @@ export function TranscriptDisplay({
                 if (isActive) activeRef.current = el;
                 setSegmentRef(i, el);
               }}
-              className={`flex gap-3 px-2 py-1.5 rounded transition-colors ${
+              className={`relative flex gap-3 px-2 py-1.5 rounded transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
               } ${flashcardSegments?.has(i) ? "border-l-2 border-primary/50" : ""}`}
+              onMouseEnter={() => translation && setHoveredSegment(i)}
+              onMouseLeave={() => setHoveredSegment(null)}
             >
               <span
                 className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums cursor-pointer hover:text-foreground"
@@ -145,6 +152,11 @@ export function TranscriptDisplay({
                   onWordToggle={onWordToggle}
                 />
               </span>
+              {isHovered && translation && (
+                <div className="absolute left-14 top-full z-50 max-w-md rounded bg-popover border border-border px-3 py-1.5 text-sm text-popover-foreground shadow-md">
+                  {translation}
+                </div>
+              )}
             </div>
           );
         })}

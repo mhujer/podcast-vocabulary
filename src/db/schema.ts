@@ -37,6 +37,9 @@ export const transcriptions = sqliteTable("transcriptions", {
   transcribedAt: text("transcribed_at"),
   status: text("status").notNull().default("pending"), // pending | in_progress | completed | failed
   errorMessage: text("error_message"),
+  translationStatus: text("translation_status"), // null | pending | in_progress | completed | failed
+  translations: text("translations"), // JSON array of strings, parallel to segments array
+  translationError: text("translation_error"),
 });
 
 export const playbackSettings = sqliteTable("playback_settings", {

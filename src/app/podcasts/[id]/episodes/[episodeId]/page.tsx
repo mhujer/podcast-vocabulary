@@ -58,6 +58,7 @@ export default async function EpisodeDetailPage({
           episode={episode}
           podcast={podcast}
           transcriptionStatus={transcription?.status ?? null}
+          translationStatus={transcription?.translationStatus ?? null}
         />
 
         <SidebarPlayer />

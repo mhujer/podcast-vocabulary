@@ -10,6 +10,7 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  Languages,
 } from "lucide-react";
 import { useState } from "react";
 import type { Episode, Podcast } from "@/db/schema";
@@ -18,15 +19,18 @@ export function EpisodeActions({
   episode,
   podcast,
   transcriptionStatus,
+  translationStatus: translationStatusProp,
 }: {
   episode: Episode;
   podcast: Podcast;
   transcriptionStatus: string | null;
+  translationStatus: string | null;
 }) {
   const router = useRouter();
   const { play } = usePlayer();
   const [downloading, setDownloading] = useState(false);
   const [tsStatus, setTsStatus] = useState(transcriptionStatus);
+  const [tlStatus, setTlStatus] = useState(translationStatusProp);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -64,6 +68,23 @@ export function EpisodeActions({
     }
   };
 
+  const handleTranslate = async () => {
+    try {
+      const res = await fetch(`/api/transcriptions/${episode.id}/translate`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(`Translation failed: ${data.error}`);
+        return;
+      }
+      setTlStatus("pending");
+      router.refresh();
+    } catch (err) {
+      alert(`Translation failed: ${err}`);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       {episode.filePath ? (
@@ -90,10 +111,35 @@ export function EpisodeActions({
             </Button>
           )}
           {tsStatus === "completed" && (
-            <span className="inline-flex items-center gap-1 text-sm text-green-600">
-              <CheckCircle className="h-4 w-4" />
-              Transcribed
-            </span>
+            <>
+              <span className="inline-flex items-center gap-1 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Transcribed
+              </span>
+
+              {(!tlStatus || tlStatus === "completed") && (
+                <span className="inline-flex items-center gap-1 text-sm text-green-600">
+                  {tlStatus === "completed" ? (
+                    <>
+                      <Languages className="h-4 w-4" />
+                      Translated
+                    </>
+                  ) : null}
+                </span>
+              )}
+              {(tlStatus === "pending" || tlStatus === "in_progress") && (
+                <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Translating...
+                </span>
+              )}
+              {tlStatus === "failed" && (
+                <Button variant="outline" size="sm" onClick={handleTranslate}>
+                  <AlertCircle className="h-4 w-4 mr-1 text-red-500" />
+                  Retry translation
+                </Button>
+              )}
+            </>
           )}
           {tsStatus === "failed" && (
             <Button variant="outline" size="sm" onClick={handleTranscribe}>

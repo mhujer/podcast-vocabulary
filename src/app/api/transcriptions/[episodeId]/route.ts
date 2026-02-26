@@ -19,5 +19,6 @@ export async function GET(
   return NextResponse.json({
     ...row,
     segments: row.segments ? JSON.parse(row.segments) : null,
+    translations: row.translations ? JSON.parse(row.translations) : null,
   });
 }

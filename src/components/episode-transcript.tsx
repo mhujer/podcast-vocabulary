@@ -14,6 +14,8 @@ interface TranscriptState {
   loading: boolean;
   status: string | null;
   segments: TranscriptionSegment[] | null;
+  translations: string[] | null;
+  translationStatus: string | null;
 }
 
 export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episodeTitle }: { episodeId?: string; podcastName?: string; episodeTitle?: string } = {}) {
@@ -40,7 +42,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
 
     Promise.resolve().then(() => {
       if (controller.signal.aborted) return;
-      setState({ episodeId, loading: true, status: null, segments: null });
+      setState({ episodeId, loading: true, status: null, segments: null, translations: null, translationStatus: null });
     });
 
     fetch(`/api/transcriptions/${episodeId}`, { signal: controller.signal })
@@ -48,19 +50,21 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
       .then((json) => {
         if (controller.signal.aborted) return;
         if (!json) {
-          setState({ episodeId, loading: false, status: null, segments: null });
+          setState({ episodeId, loading: false, status: null, segments: null, translations: null, translationStatus: null });
         } else {
           setState({
             episodeId,
             loading: false,
             status: json.status,
             segments: json.status === "completed" ? json.segments : null,
+            translations: json.translations ?? null,
+            translationStatus: json.translationStatus ?? null,
           });
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setState({ episodeId, loading: false, status: null, segments: null });
+          setState({ episodeId, loading: false, status: null, segments: null, translations: null, translationStatus: null });
         }
       });
 
@@ -261,6 +265,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
       >
         <TranscriptDisplay
           segments={state.segments}
+          translations={state.translations}
           currentTime={currentTime}
           onSeek={(time) => seek(time)}
           selectedWords={selectedWords}

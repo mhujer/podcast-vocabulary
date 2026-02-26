@@ -7,6 +7,7 @@ import { transcriptions, episodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { TranscriptionSegment, TranscriptionWord } from "@/types/transcription";
 import { DATA_DIR } from "@/db";
+import { translateSegments } from "@/lib/translation-service";
 
 const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
@@ -190,8 +191,15 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
         status: "completed",
         segments: JSON.stringify(segments),
         transcribedAt: new Date().toISOString(),
+        translationStatus: "pending",
       })
       .where(eq(transcriptions.id, transcriptionId));
+
+    // Auto-trigger translation (fire-and-forget)
+    log("auto-triggering translation for", transcriptionId);
+    translateSegments(transcriptionId).catch((err) =>
+      log("translation auto-trigger error:", err)
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log("ERROR:", message);
