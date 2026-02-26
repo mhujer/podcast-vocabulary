@@ -216,6 +216,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
     const lines = [
       "#separator:tab",
       `#deck:${deckName}`,
+      "#columns:FrontText\tBackText",
       ...flashcards.map(
         (c) =>
           `${c.front.replace(/\n/g, "<br>")}\t${c.back.replace(/\n/g, "<br>")}`
