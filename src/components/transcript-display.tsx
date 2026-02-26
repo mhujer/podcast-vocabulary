@@ -198,7 +198,7 @@ function VocabWords({
           w.start <= currentTime &&
           currentTime < w.end;
 
-        let className = "cursor-pointer rounded px-0.5 hover:bg-accent/50";
+        let className = "cursor-pointer rounded hover:bg-accent/50";
         if (isSelected) className += " bg-yellow-300/50";
         if (isActiveWord) className += " bg-primary/30";
 
