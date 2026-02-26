@@ -12,6 +12,7 @@ export default async function Home() {
       id: podcasts.id,
       name: podcasts.name,
       rssUrl: podcasts.rssUrl,
+      imageUrl: podcasts.imageUrl,
       latestEpisodeDate: podcasts.latestEpisodeDate,
       createdAt: podcasts.createdAt,
       episodeCount: count(episodes.id),

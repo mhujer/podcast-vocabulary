@@ -52,6 +52,7 @@ export async function addPodcast(rssUrl: string) {
     .values({
       name: feed.title,
       rssUrl,
+      imageUrl: feed.imageUrl || null,
       latestEpisodeDate: feed.episodes[0]?.pubDate || null,
     })
     .returning();
@@ -126,11 +127,18 @@ export async function refreshAllFeeds() {
         insertedNew.push(inserted);
       }
 
-      // Update latest episode date
+      // Update latest episode date and image
+      const updateFields: Record<string, string> = {};
       if (feed.episodes[0]?.pubDate) {
+        updateFields.latestEpisodeDate = feed.episodes[0].pubDate;
+      }
+      if (feed.imageUrl) {
+        updateFields.imageUrl = feed.imageUrl;
+      }
+      if (Object.keys(updateFields).length > 0) {
         await db
           .update(podcasts)
-          .set({ latestEpisodeDate: feed.episodes[0].pubDate })
+          .set(updateFields)
           .where(eq(podcasts.id, podcast.id));
       }
 

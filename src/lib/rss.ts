@@ -12,6 +12,7 @@ export interface ParsedEpisode {
 export interface ParsedFeed {
   title: string;
   description: string | undefined;
+  imageUrl: string | undefined;
   episodes: ParsedEpisode[];
 }
 
@@ -57,9 +58,15 @@ export async function parseFeed(rssUrl: string): Promise<ParsedFeed> {
       return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
     });
 
+  const feedAny = feed as unknown as Record<string, unknown>;
+  const itunesImage = (feedAny.itunes as Record<string, unknown> | undefined)?.image;
+  const channelImage = (feedAny.image as { url?: string } | undefined)?.url;
+  const imageUrl = itunesImage || channelImage || undefined;
+
   return {
     title: feed.title || "Unknown Podcast",
     description: feed.description || undefined,
+    imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
     episodes,
   };
 }

@@ -2,15 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, RefreshCw } from "lucide-react";
+import { Trash2, RefreshCw, Podcast } from "lucide-react";
 import { useState } from "react";
 
 interface PodcastWithCount {
   id: string;
   name: string;
   rssUrl: string;
+  imageUrl: string | null;
   latestEpisodeDate: string | null;
   episodeCount: number;
 }
@@ -55,7 +57,22 @@ export function PodcastList({ podcasts }: { podcasts: PodcastWithCount[] }) {
         {podcasts.map((podcast) => (
           <Card key={podcast.id} className="group">
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <Link href={`/podcasts/${podcast.id}`} className="flex-1 min-w-0">
+              <Link href={`/podcasts/${podcast.id}`} className="flex-1 min-w-0 flex items-center gap-3">
+                {podcast.imageUrl ? (
+                  <Image
+                    src={podcast.imageUrl}
+                    alt=""
+                    width={48}
+                    height={48}
+                    unoptimized
+                    className="w-12 h-12 rounded-md object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <Podcast className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0">
                 <CardTitle className="text-lg hover:underline">
                   {podcast.name}
                 </CardTitle>
@@ -65,6 +82,7 @@ export function PodcastList({ podcasts }: { podcasts: PodcastWithCount[] }) {
                     <> &middot; Latest: {new Date(podcast.latestEpisodeDate).toLocaleDateString()}</>
                   )}
                 </CardDescription>
+                </div>
               </Link>
               <Button
                 variant="ghost"

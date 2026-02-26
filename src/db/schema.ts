@@ -5,6 +5,7 @@ export const podcasts = sqliteTable("podcasts", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   rssUrl: text("rss_url").notNull(),
+  imageUrl: text("image_url"),
   latestEpisodeDate: text("latest_episode_date"),
   createdAt: text("created_at")
     .notNull()
