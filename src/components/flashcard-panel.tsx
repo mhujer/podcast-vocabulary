@@ -51,10 +51,11 @@ export function FlashcardPanel({
 
   // Auto-scroll to the highlighted group (ref access is safe inside effects)
   useEffect(() => {
+    console.log("[flashcard-panel] scroll effect", { highlightedSegmentIndex, activeSegmentIndex });
     if (highlightedSegmentIndex < 0) return;
     const el = groupRefs.current.get(highlightedSegmentIndex);
-    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [highlightedSegmentIndex]);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightedSegmentIndex, activeSegmentIndex]);
 
   if (flashcards.length === 0) {
     return (

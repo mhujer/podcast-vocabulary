@@ -27,6 +27,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const [creating, setCreating] = useState(false);
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const [bubblePos, setBubblePos] = useState<{ top: number; left: number } | null>(null);
+  const [visibleSegmentIndex, setVisibleSegmentIndex] = useState(-1);
 
   // Fetch transcription
   useEffect(() => {
@@ -219,6 +220,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const activeSegmentIndex = state.segments.findIndex(
     (seg) => seg.start <= currentTime && currentTime < seg.end
   );
+  const flashcardTargetIndex = visibleSegmentIndex >= 0 ? visibleSegmentIndex : activeSegmentIndex;
   const hasSelection = getSelectedText() !== null;
   const showPanel = flashcards.length > 0;
 
@@ -237,6 +239,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
             onSeek={(time) => seek(time)}
             selectedWords={selectedWords}
             onWordToggle={handleWordToggle}
+            onVisibleSegmentChange={setVisibleSegmentIndex}
           />
           {hasSelection && bubblePos && (
             <div
@@ -266,7 +269,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
             <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
             <FlashcardPanel
               flashcards={flashcards}
-              activeSegmentIndex={activeSegmentIndex}
+              activeSegmentIndex={flashcardTargetIndex}
               onUpdate={handleFlashcardUpdate}
               onDelete={handleFlashcardDelete}
             />

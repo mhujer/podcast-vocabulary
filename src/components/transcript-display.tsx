@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TranscriptionSegment } from "@/types/transcription";
 
@@ -16,16 +16,82 @@ export function TranscriptDisplay({
   onSeek,
   selectedWords,
   onWordToggle,
+  onVisibleSegmentChange,
 }: {
   segments: TranscriptionSegment[];
   currentTime: number;
   onSeek: (time: number) => void;
   selectedWords: Map<number, Set<number>>;
   onWordToggle: (segmentIndex: number, wordIndex: number) => void;
+  onVisibleSegmentChange?: (index: number) => void;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   const activeIndex = segments.findIndex(
     (seg) => seg.start <= currentTime && currentTime < seg.end
+  );
+
+  // Track which segment is visible in the scroll viewport
+  const elementToIndexRef = useRef<Map<Element, number>>(new Map());
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
+  const onVisibleSegmentChangeRef = useRef(onVisibleSegmentChange);
+  useEffect(() => {
+    onVisibleSegmentChangeRef.current = onVisibleSegmentChange;
+  }, [onVisibleSegmentChange]);
+
+  useEffect(() => {
+    const root = scrollRootRef.current;
+    if (!root) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        // Find the topmost visible segment
+        let topIndex = -1;
+        let topY = Infinity;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = elementToIndexRef.current.get(entry.target);
+            if (idx !== undefined && entry.boundingClientRect.top < topY) {
+              topY = entry.boundingClientRect.top;
+              topIndex = idx;
+            }
+          }
+        }
+        if (topIndex >= 0) {
+          console.log("[transcript] visible segment:", topIndex);
+          onVisibleSegmentChangeRef.current?.(topIndex);
+        }
+      },
+      { root, threshold: 0.5 }
+    );
+
+    // Observe all currently tracked elements
+    for (const el of elementToIndexRef.current.keys()) {
+      observerRef.current.observe(el);
+    }
+
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
+  }, [segments]);
+
+  const setSegmentRef = useCallback(
+    (index: number, el: HTMLDivElement | null) => {
+      // Clean up old element for this index
+      for (const [existingEl, idx] of elementToIndexRef.current) {
+        if (idx === index) {
+          elementToIndexRef.current.delete(existingEl);
+          observerRef.current?.unobserve(existingEl);
+          break;
+        }
+      }
+      if (el) {
+        elementToIndexRef.current.set(el, index);
+        observerRef.current?.observe(el);
+      }
+    },
+    []
   );
 
   useEffect(() => {
@@ -33,14 +99,17 @@ export function TranscriptDisplay({
   }, [activeIndex]);
 
   return (
-    <ScrollArea className="h-[60vh]">
+    <ScrollArea className="h-[60vh]" viewportRef={scrollRootRef}>
       <div className="space-y-1 p-4">
         {segments.map((seg, i) => {
           const isActive = i === activeIndex;
           return (
             <div
               key={i}
-              ref={isActive ? activeRef : undefined}
+              ref={(el) => {
+                if (isActive) activeRef.current = el;
+                setSegmentRef(i, el);
+              }}
               className={`flex gap-3 px-2 py-1.5 rounded transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
               }`}
