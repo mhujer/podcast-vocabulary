@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { flashcards } from "@/db/schema";
+import { flashcards, transcriptions } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
@@ -15,6 +15,11 @@ const flashcardSchema = z.object({
   translation: z
     .string()
     .describe("Czech translation in context of the sentence"),
+  exampleSentence: z
+    .string()
+    .describe(
+      "A reworked, self-contained German sentence using the highlighted word that makes sense without any surrounding context"
+    ),
 });
 
 export async function POST(req: NextRequest) {
@@ -25,16 +30,56 @@ export async function POST(req: NextRequest) {
     `[flashcards] Creating flashcard: episode=${episodeId} segment=${segmentIndex} words="${selectedWords}"`
   );
 
+  // Fetch surrounding segments for context
+  const transcription = await db
+    .select()
+    .from(transcriptions)
+    .where(eq(transcriptions.episodeId, episodeId))
+    .then((rows) => rows[0]);
+
+  let contextBefore = "";
+  let contextAfter = "";
+
+  if (transcription?.segments) {
+    const segments: { text: string }[] = JSON.parse(transcription.segments);
+    const startIdx = Math.max(0, segmentIndex - 2);
+    const endIdx = Math.min(segments.length - 1, segmentIndex + 2);
+
+    contextBefore = segments
+      .slice(startIdx, segmentIndex)
+      .map((s) => s.text)
+      .join(" ")
+      .trim();
+    contextAfter = segments
+      .slice(segmentIndex + 1, endIdx + 1)
+      .map((s) => s.text)
+      .join(" ")
+      .trim();
+
+    console.log(
+      `[flashcards] Context: before="${contextBefore}" after="${contextAfter}"`
+    );
+  }
+
+  const contextBlock = [
+    contextBefore && `Context before: "${contextBefore}"`,
+    `Target sentence: "${sentenceText}"`,
+    contextAfter && `Context after: "${contextAfter}"`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const { output } = await generateText({
     model: openai("gpt-5.2"),
     output: Output.object({ schema: flashcardSchema }),
     prompt: `You are a German-Czech language assistant helping build vocabulary flashcards.
 
-Given a German sentence from a podcast and a highlighted word or phrase from it, return:
+Given a German sentence from a podcast with surrounding context and a highlighted word or phrase, return:
 - baseForm: the dictionary/base form of the highlighted word(s) in German. For verbs use infinitive, for nouns use nominative singular with article (e.g. "der Hund"), for adjectives use base form. If it's an idiom or multi-word phrase, return the phrase in its canonical form.
 - translation: the Czech translation of the highlighted word(s), translated in the context of the given sentence.
+- exampleSentence: a simplified, self-contained German sentence using the highlighted word. It must make sense on its own without the podcast context. Keep it natural and concise.
 
-Sentence: "${sentenceText}"
+${contextBlock}
 Highlighted: "${selectedWords}"`,
   });
 
@@ -45,7 +90,7 @@ Highlighted: "${selectedWords}"`,
     );
   }
 
-  const front = `${output.baseForm}\n\n(${sentenceText})`;
+  const front = `${output.baseForm}\n\n(${output.exampleSentence})`;
   const back = output.translation;
 
   const [card] = await db
