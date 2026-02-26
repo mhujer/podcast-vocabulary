@@ -5,7 +5,7 @@ import { usePlayer } from "@/hooks/use-player";
 import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
 import { FlashcardPanel } from "@/components/flashcard-panel";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus } from "lucide-react";
+import { Download, Loader2, Plus } from "lucide-react";
 import type { TranscriptionSegment } from "@/types/transcription";
 import type { Flashcard } from "@/db/schema";
 
@@ -16,7 +16,7 @@ interface TranscriptState {
   segments: TranscriptionSegment[] | null;
 }
 
-export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: string } = {}) {
+export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episodeTitle }: { episodeId?: string; podcastName?: string; episodeTitle?: string } = {}) {
   const { currentEpisode, currentTime, seek } = usePlayer();
   const [state, setState] = useState<TranscriptState | null>(null);
   const episodeId = episodeIdProp ?? currentEpisode?.id ?? null;
@@ -210,6 +210,27 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
     return indices;
   }, [flashcards]);
 
+  const handleExportAnki = useCallback(() => {
+    if (flashcards.length === 0 || !podcastName || !episodeTitle) return;
+    const deckName = `Deutsch-Podcasts::${podcastName}::${episodeTitle}`;
+    const lines = [
+      "#separator:tab",
+      `#deck:${deckName}`,
+      ...flashcards.map(
+        (c) =>
+          `${c.front.replace(/\n/g, "<br>")}\t${c.back.replace(/\n/g, "<br>")}`
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${podcastName} - ${episodeTitle}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    console.log(`[vocab] Exported ${flashcards.length} flashcards for Anki`);
+  }, [flashcards, podcastName, episodeTitle]);
+
   if (!episodeId) return null;
   if (!state || state.episodeId !== episodeId || state.loading) return null;
 
@@ -272,7 +293,19 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
 
       {showPanel && (
         <div className="w-80 shrink-0 h-full flex flex-col">
-          <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Flashcards</h3>
+            {podcastName && episodeTitle && (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={handleExportAnki}
+                title="Export to Anki"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
           <div className="flex-1 min-h-0">
             <FlashcardPanel
               flashcards={flashcards}

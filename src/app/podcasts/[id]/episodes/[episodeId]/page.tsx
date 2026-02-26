@@ -68,7 +68,7 @@ export default async function EpisodeDetailPage({
       </aside>
 
       <div className="flex-1 min-w-0 overflow-hidden">
-        <EpisodeTranscript episodeId={episodeId} />
+        <EpisodeTranscript episodeId={episodeId} podcastName={podcast.name} episodeTitle={episode.title} />
       </div>
     </main>
   );
