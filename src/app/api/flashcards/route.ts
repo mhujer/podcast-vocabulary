@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     prompt: `You are a German-Czech language assistant helping build vocabulary flashcards.
 
 Given a German sentence from a podcast with surrounding context and a highlighted word or phrase, return:
-- baseForm: the dictionary/base form of the highlighted word(s) in German. For verbs use infinitive, for nouns use nominative singular with article (e.g. "der Hund"), for adjectives use base form. If it's an idiom or multi-word phrase, return the phrase in its canonical form.
+- baseForm: the dictionary/base form of the highlighted word(s) in German. For nouns use nominative singular with article and append the plural ending in parentheses, e.g. "der Hund (-e)", "die Katze (-n)", "das Kind (-er)". For irregular/strong verbs use infinitive and append key conjugation forms in parentheses: 3rd person present, preterite, perfect auxiliary + past participle, e.g. "laufen (läuft, lief, ist gelaufen)", "essen (isst, aß, hat gegessen)". For regular/weak verbs just use the infinitive. For adjectives use base form. If it's an idiom or multi-word phrase, return the phrase in its canonical form.
 - translation: the Czech translation of the highlighted word(s) in base/dictionary form (e.g. singular nominative for nouns, infinitive for verbs), but choosing the correct meaning based on the sentence context.
 - exampleSentence: a simplified, self-contained German sentence using the highlighted word. It must make sense on its own without the podcast context. Keep it natural and concise.
 
