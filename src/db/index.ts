@@ -18,6 +18,11 @@ sqlite.pragma("foreign_keys = ON");
 export const db = drizzle(sqlite, { schema });
 export { DATA_DIR, AUDIO_DIR, DB_PATH };
 
+// Mark interrupted transcriptions as failed on startup
+sqlite.prepare(
+  `UPDATE transcriptions SET status = 'failed', error_message = 'Transcription was interrupted by app restart' WHERE status = 'in_progress'`
+).run();
+
 // Seed from OPML if the podcasts table is empty
 const podcastCount = sqlite.prepare("SELECT COUNT(*) as count FROM podcasts").get() as { count: number } | undefined;
 if (podcastCount && podcastCount.count === 0) {
