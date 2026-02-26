@@ -116,6 +116,12 @@ export function FlashcardPanel({
   );
 }
 
+function autoResize(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
 function FlashcardItem({
   card,
   onUpdate,
@@ -127,6 +133,11 @@ function FlashcardItem({
 }) {
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    autoResize(frontRef.current);
+    autoResize(backRef.current);
+  }, []);
 
   const handleBlur = (field: "front" | "back") => {
     const ref = field === "front" ? frontRef : backRef;
@@ -143,8 +154,9 @@ function FlashcardItem({
           ref={frontRef}
           defaultValue={card.front}
           onBlur={() => handleBlur("front")}
-          rows={3}
-          className="flex-1 text-xs resize-none bg-transparent border-none outline-none p-1"
+          onInput={(e) => autoResize(e.currentTarget)}
+          rows={1}
+          className="flex-1 text-xs resize-none overflow-hidden bg-transparent border-none outline-none p-1"
         />
         <Button
           variant="ghost"
@@ -160,8 +172,9 @@ function FlashcardItem({
         ref={backRef}
         defaultValue={card.back}
         onBlur={() => handleBlur("back")}
+        onInput={(e) => autoResize(e.currentTarget)}
         rows={1}
-        className="w-full text-xs resize-none bg-transparent border-none outline-none p-1 font-medium"
+        className="w-full text-xs resize-none overflow-hidden bg-transparent border-none outline-none p-1 font-medium"
       />
     </div>
   );
