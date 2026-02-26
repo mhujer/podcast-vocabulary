@@ -5,14 +5,18 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Flashcard } from "@/db/schema";
+import type { TranscriptionSegment } from "@/types/transcription";
+import { formatTimestamp } from "@/components/transcript-display";
 
 export function FlashcardPanel({
   flashcards,
+  segments,
   activeSegmentIndex,
   onUpdate,
   onDelete,
 }: {
   flashcards: Flashcard[];
+  segments?: TranscriptionSegment[];
   activeSegmentIndex: number;
   onUpdate: (id: string, field: "front" | "back", value: string) => void;
   onDelete: (id: string) => void;
@@ -90,7 +94,7 @@ export function FlashcardPanel({
             }`}
           >
             <div className="text-xs text-muted-foreground font-medium">
-              Segment {segIdx + 1}
+              {segments?.[segIdx] ? formatTimestamp(segments[segIdx].start) : `Segment ${segIdx + 1}`}
             </div>
             {cards.map((card) => (
               <FlashcardItem

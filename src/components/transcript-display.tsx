@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TranscriptionSegment } from "@/types/transcription";
 
-function formatTimestamp(seconds: number): string {
+export function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;

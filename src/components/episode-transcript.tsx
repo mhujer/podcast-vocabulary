@@ -269,6 +269,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
             <h3 className="text-sm font-semibold mb-2">Flashcards</h3>
             <FlashcardPanel
               flashcards={flashcards}
+              segments={state.segments}
               activeSegmentIndex={flashcardTargetIndex}
               onUpdate={handleFlashcardUpdate}
               onDelete={handleFlashcardDelete}
