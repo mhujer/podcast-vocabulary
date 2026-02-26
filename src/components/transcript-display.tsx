@@ -17,6 +17,8 @@ export function TranscriptDisplay({
   selectedWords,
   onWordToggle,
   onVisibleSegmentChange,
+  flashcardSegments,
+  scrollToSegmentIndex,
 }: {
   segments: TranscriptionSegment[];
   currentTime: number;
@@ -24,6 +26,8 @@ export function TranscriptDisplay({
   selectedWords: Map<number, Set<number>>;
   onWordToggle: (segmentIndex: number, wordIndex: number) => void;
   onVisibleSegmentChange?: (index: number) => void;
+  flashcardSegments?: Set<number>;
+  scrollToSegmentIndex?: number | null;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   const activeIndex = segments.findIndex(
@@ -98,6 +102,17 @@ export function TranscriptDisplay({
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeIndex]);
 
+  // Scroll to a specific segment when requested by parent
+  useEffect(() => {
+    if (scrollToSegmentIndex == null || scrollToSegmentIndex < 0) return;
+    for (const [el, idx] of elementToIndexRef.current) {
+      if (idx === scrollToSegmentIndex) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        break;
+      }
+    }
+  }, [scrollToSegmentIndex]);
+
   return (
     <ScrollArea className="h-full" viewportRef={scrollRootRef}>
       <div className="space-y-1 p-4">
@@ -112,7 +127,7 @@ export function TranscriptDisplay({
               }}
               className={`flex gap-3 px-2 py-1.5 rounded transition-colors ${
                 isActive ? "bg-primary/15 font-medium" : ""
-              }`}
+              } ${flashcardSegments?.has(i) ? "border-l-2 border-primary/50" : ""}`}
             >
               <span
                 className="text-xs text-muted-foreground w-10 shrink-0 pt-0.5 tabular-nums cursor-pointer hover:text-foreground"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "@/hooks/use-player";
 import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
 import { FlashcardPanel } from "@/components/flashcard-panel";
@@ -28,6 +28,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const [bubblePos, setBubblePos] = useState<{ top: number; left: number } | null>(null);
   const [visibleSegmentIndex, setVisibleSegmentIndex] = useState(-1);
+  const [scrollToSegment, setScrollToSegment] = useState<number | null>(null);
 
   // Fetch transcription
   useEffect(() => {
@@ -203,6 +204,12 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
     setFlashcards((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
+  const flashcardSegmentIndices = useMemo(() => {
+    const indices = new Set<number>();
+    for (const card of flashcards) indices.add(card.segmentIndex);
+    return indices;
+  }, [flashcards]);
+
   if (!episodeId) return null;
   if (!state || state.episodeId !== episodeId || state.loading) return null;
 
@@ -237,6 +244,8 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
           selectedWords={selectedWords}
           onWordToggle={handleWordToggle}
           onVisibleSegmentChange={setVisibleSegmentIndex}
+          flashcardSegments={flashcardSegmentIndices}
+          scrollToSegmentIndex={scrollToSegment}
         />
         {hasSelection && bubblePos && (
           <div
@@ -271,6 +280,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp }: { episodeId?: st
               activeSegmentIndex={flashcardTargetIndex}
               onUpdate={handleFlashcardUpdate}
               onDelete={handleFlashcardDelete}
+              onSegmentClick={setScrollToSegment}
             />
           </div>
         </div>

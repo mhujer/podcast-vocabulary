@@ -14,12 +14,14 @@ export function FlashcardPanel({
   activeSegmentIndex,
   onUpdate,
   onDelete,
+  onSegmentClick,
 }: {
   flashcards: Flashcard[];
   segments?: TranscriptionSegment[];
   activeSegmentIndex: number;
   onUpdate: (id: string, field: "front" | "back", value: string) => void;
   onDelete: (id: string) => void;
+  onSegmentClick?: (segmentIndex: number) => void;
 }) {
   const groupRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
@@ -93,7 +95,10 @@ export function FlashcardPanel({
                 : ""
             }`}
           >
-            <div className="text-xs text-muted-foreground font-medium">
+            <div
+              className="text-xs text-muted-foreground font-medium cursor-pointer hover:text-foreground"
+              onClick={() => onSegmentClick?.(segIdx)}
+            >
               {segments?.[segIdx] ? formatTimestamp(segments[segIdx].start) : `Segment ${segIdx + 1}`}
             </div>
             {cards.map((card) => (
