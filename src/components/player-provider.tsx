@@ -18,14 +18,13 @@ interface PlayerState {
   currentTime: number;
   duration: number;
   segmentEnd: number | null;
-  hideGlobalPlayer: boolean;
   play: (episode: Episode, podcast: Podcast) => void;
   togglePlayPause: () => void;
   seek: (time: number) => void;
   rewind: (seconds: number) => void;
   setSpeed: (speed: number) => void;
   playSegment: (startTime: number, endTime: number) => void;
-  setHideGlobalPlayer: (hide: boolean) => void;
+  stop: () => void;
 }
 
 export const PlayerContext = createContext<PlayerState | null>(null);
@@ -41,7 +40,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [segmentEnd, setSegmentEnd] = useState<number | null>(null);
-  const [hideGlobalPlayer, setHideGlobalPlayer] = useState(false);
   const segmentEndRef = useRef<number | null>(null);
   const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentEpisodeRef = useRef<Episode | null>(null);
@@ -196,6 +194,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audio.play().catch(console.error);
   }, []);
 
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    const ep = currentEpisodeRef.current;
+    if (audio) {
+      if (ep && audio.currentTime > 0) {
+        fetch(`/api/episodes/${ep.id}/playback`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ position: audio.currentTime }),
+        }).catch(console.error);
+      }
+      audio.pause();
+      audio.src = "";
+    }
+    setCurrentEpisode(null);
+    setCurrentPodcast(null);
+    setCurrentTime(0);
+    setDuration(0);
+    segmentEndRef.current = null;
+    setSegmentEnd(null);
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -212,8 +232,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setSpeed,
         segmentEnd,
         playSegment,
-        hideGlobalPlayer,
-        setHideGlobalPlayer,
+        stop,
       }}
     >
       {children}

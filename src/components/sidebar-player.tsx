@@ -30,13 +30,12 @@ export function SidebarPlayer() {
     seek,
     rewind,
     setSpeed,
-    setHideGlobalPlayer,
+    stop,
   } = usePlayer();
 
   useEffect(() => {
-    setHideGlobalPlayer(true);
-    return () => setHideGlobalPlayer(false);
-  }, [setHideGlobalPlayer]);
+    return () => stop();
+  }, [stop]);
 
   if (!currentEpisode) return null;
 
