@@ -23,6 +23,22 @@ sqlite.prepare(
   `UPDATE transcriptions SET status = 'failed', error_message = 'Transcription was interrupted by app restart' WHERE status = 'in_progress'`
 ).run();
 
+// Re-enqueue pending transcriptions on startup
+async function reEnqueuePending() {
+  const { enqueueTranscription } = await import("@/lib/transcription-service");
+  const rows = sqlite.prepare(
+    `SELECT id, episode_id FROM transcriptions WHERE status = 'pending'`
+  ).all() as { id: string; episode_id: string }[];
+
+  if (rows.length === 0) return;
+  console.log(`[db] re-enqueuing ${rows.length} pending transcriptions`);
+  for (const row of rows) {
+    enqueueTranscription(row.id, row.episode_id);
+  }
+}
+
+reEnqueuePending().catch(console.error);
+
 // Mark interrupted translations as failed on startup
 sqlite.prepare(
   `UPDATE transcriptions SET translation_status = 'failed', translation_error = 'Translation was interrupted by app restart' WHERE translation_status = 'in_progress'`

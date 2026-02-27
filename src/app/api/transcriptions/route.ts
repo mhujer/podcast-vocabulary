@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { episodes, transcriptions } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { transcribeEpisode } from "@/lib/transcription-service";
+import { enqueueTranscription } from "@/lib/transcription-service";
 
 export async function POST(request: Request) {
   const { episodeId } = await request.json();
@@ -46,10 +46,8 @@ export async function POST(request: Request) {
     .returning();
   console.log("[transcriptions/POST] created transcription:", row.id, "— starting transcribeEpisode");
 
-  // Fire-and-forget
-  transcribeEpisode(row.id, episodeId).catch((err) =>
-    console.error("[transcriptions/POST] transcribeEpisode unhandled error:", err)
-  );
+  // Enqueue for sequential processing
+  enqueueTranscription(row.id, episodeId);
 
   return NextResponse.json({ id: row.id }, { status: 202 });
 }

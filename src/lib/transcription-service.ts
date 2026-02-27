@@ -84,6 +84,29 @@ function groupWordsIntoSegments(wordSegments: WhisperJsonSegment[]): Transcripti
   return segments;
 }
 
+// --- Sequential transcription queue ---
+interface QueueItem { transcriptionId: string; episodeId: string; }
+const queue: QueueItem[] = [];
+let processing = false;
+
+export function enqueueTranscription(transcriptionId: string, episodeId: string) {
+  queue.push({ transcriptionId, episodeId });
+  log("enqueued", { transcriptionId, episodeId, queueLength: queue.length });
+  processQueue();
+}
+
+async function processQueue() {
+  if (processing) return;
+  processing = true;
+  while (queue.length > 0) {
+    const item = queue.shift()!;
+    log("processing next in queue", { transcriptionId: item.transcriptionId, remaining: queue.length });
+    await transcribeEpisode(item.transcriptionId, item.episodeId);
+  }
+  processing = false;
+  log("queue empty, processing stopped");
+}
+
 export async function transcribeEpisode(transcriptionId: string, episodeId: string): Promise<void> {
   const tmpDir = join(TMP_DIR, episodeId);
   log("start", { transcriptionId, episodeId });
