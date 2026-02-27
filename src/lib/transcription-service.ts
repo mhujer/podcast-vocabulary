@@ -4,7 +4,7 @@ import { readFileSync, mkdirSync, rmSync, existsSync, statSync } from "fs";
 import { join } from "path";
 import { db } from "@/db";
 import { transcriptions, episodes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { TranscriptionSegment, TranscriptionWord } from "@/types/transcription";
 import { DATA_DIR } from "@/db";
 import { translateSegments } from "@/lib/translation-service";
@@ -84,27 +84,61 @@ function groupWordsIntoSegments(wordSegments: WhisperJsonSegment[]): Transcripti
   return segments;
 }
 
-// --- Sequential transcription queue ---
-interface QueueItem { transcriptionId: string; episodeId: string; }
-const queue: QueueItem[] = [];
+// --- DB-driven sequential transcription queue ---
 let processing = false;
 
-export function enqueueTranscription(transcriptionId: string, episodeId: string) {
-  queue.push({ transcriptionId, episodeId });
-  log("enqueued", { transcriptionId, episodeId, queueLength: queue.length });
-  processQueue();
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function enqueueTranscription(_transcriptionId: string, _episodeId: string) {
+  // DB row already inserted by the API route with status='pending'.
+  // Just kick the processing loop.
+  log("enqueue called, triggering processing");
+  triggerProcessing();
 }
 
-async function processQueue() {
-  if (processing) return;
-  processing = true;
-  while (queue.length > 0) {
-    const item = queue.shift()!;
-    log("processing next in queue", { transcriptionId: item.transcriptionId, remaining: queue.length });
-    await transcribeEpisode(item.transcriptionId, item.episodeId);
+export function triggerProcessing() {
+  if (processing) {
+    log("triggerProcessing: already processing, skipping");
+    return;
   }
-  processing = false;
-  log("queue empty, processing stopped");
+  processing = true;
+  log("triggerProcessing: starting processLoop");
+  processLoop().finally(() => {
+    processing = false;
+    log("processLoop finished, processing flag reset");
+  });
+}
+
+async function processLoop() {
+  while (true) {
+    // Pick the oldest pending transcription by rowid (FIFO)
+    const [next] = await db
+      .select({ id: transcriptions.id, episodeId: transcriptions.episodeId })
+      .from(transcriptions)
+      .where(eq(transcriptions.status, "pending"))
+      .orderBy(sql`rowid`)
+      .limit(1);
+
+    if (!next) {
+      log("no more pending transcriptions, stopping loop");
+      break;
+    }
+
+    log("processing next from DB", { transcriptionId: next.id, episodeId: next.episodeId });
+    try {
+      await transcribeEpisode(next.id, next.episodeId);
+    } catch (err) {
+      // Catch unexpected errors so the loop continues with remaining items
+      const message = err instanceof Error ? err.message : String(err);
+      log("unexpected error in processLoop iteration:", message);
+      try {
+        await db.update(transcriptions)
+          .set({ status: "failed", errorMessage: message })
+          .where(eq(transcriptions.id, next.id));
+      } catch (dbErr) {
+        log("failed to mark transcription as failed in DB:", dbErr);
+      }
+    }
+  }
 }
 
 export async function transcribeEpisode(transcriptionId: string, episodeId: string): Promise<void> {
