@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Podcast Vocabulary Extractor
 
-## Getting Started
+Personal app for learning German vocabulary from podcasts. Subscribe to RSS feeds, download episodes locally, play them with a persistent audio player, transcribe using local whisper.cpp, and translate segments from German to Czech.
 
-First, run the development server:
+## Features
+
+- RSS feed subscription with auto-download of latest episodes
+- Audio player with speed control, rewind, position memory, and seeking
+- Local transcription via whisper.cpp (German, word-level timestamps)
+- Karaoke-style transcript display with click-to-play segments
+- German→Czech translation via OpenAI
+- Flashcard creation from transcript words
+
+## Tech Stack
+
+Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Shadcn UI · Drizzle ORM · SQLite · whisper.cpp · OpenAI
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # Add OPENAI_API_KEY for translation
+docker compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs at [http://localhost:3000](http://localhost:3000). Whisper model downloads automatically on first start.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Data is stored in `/data` (SQLite database + downloaded audio files + whisper model).

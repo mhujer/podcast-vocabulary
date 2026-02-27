@@ -2,9 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Project Instructions
+## Maintenance
+
+When adding/removing API routes, DB tables, or making key architectural changes, update the relevant sections in this file to keep it in sync.
 
 ## General
+
 - This app is only for me, so always show the full error message, not a user-friendly message
 - Add console.log to backend or frontend code to make it easier to debug issues (I'm following the server output)
 
@@ -15,6 +18,7 @@ npm run dev        # Start dev server (port 3000)
 npm run build      # Production build
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript type check
+npm run db:push    # Push Drizzle schema changes to SQLite
 ```
 
 No test framework is configured yet.
@@ -23,31 +27,57 @@ Always run ESLint and TypeScript type check after making changes.
 
 ## Architecture
 
-**Stack**: Next.js (App Router) + TypeScript + Tailwind CSS v4 + SQLite + whisper.cpp (local)
+**Stack**: Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + Shadcn UI + Drizzle ORM + SQLite + whisper.cpp (local) + OpenAI (translation)
 
 **App Router**: All pages and API routes live under `src/app/`. Path alias `@/*` maps to `src/*`.
 
+**Docker**: App runs in Docker with whisper.cpp binary, ffmpeg, and Node.js bundled. Use `docker-compose.yml` to run.
+
 **Storage** (Docker volume at `/data`):
-- `/data/podcasts.db` — SQLite database
-- `/data/audio/` — Downloaded podcast audio files
+- `/data/podcasts.db` — SQLite database (WAL mode, foreign keys enabled)
+- `/data/audio/{podcastId}/{episodeId}.{ext}` — Downloaded podcast audio files
+- `/data/audio/tmp/` — Temporary ffmpeg outputs during transcription
+- `/data/whisper/ggml-medium.bin` — Whisper model file
 
-**Environment**: No API keys required. Transcription uses local whisper.cpp bundled in Docker image.
+**Environment**: `OPENAI_API_KEY` required in `.env.local` for German→Czech translation (see `.env.example`).
 
-**SQLite tables**: `podcasts`, `episodes`, `transcriptions`, `playback_settings` — see SPEC.md for full schema.
+**SQLite tables** (Drizzle schema in `src/db/schema.ts`):
+- `podcasts` — Podcast metadata (UUID PK)
+- `episodes` — Episodes per podcast, deduped by guid/audioUrl (UUID PK)
+- `transcriptions` — Whisper transcription results + translation data (UUID PK)
+- `playbackSettings` — Playback speed per podcast (podcastId PK)
+- `flashcards` — User-created flashcards from transcript words (UUID PK)
 
-**API routes** (to be built under `src/app/api/`):
-- `/api/podcasts` — CRUD + RSS refresh
-- `/api/podcasts/[id]/episodes`, `/api/episodes/[id]` — episode data
-- `/api/episodes/[id]/playback` — playback position/speed persistence
-- `/api/transcriptions` — Whisper transcription queue and results
-- `/api/audio/stream/[episodeId]` — audio streaming from `/data/audio/`
+**API routes** (`src/app/api/`):
+- `/api/podcasts` — CRUD, `/api/podcasts/refresh` — refresh all feeds
+- `/api/podcasts/[id]/episodes` — episodes for podcast
+- `/api/episodes/[id]` — episode details
+- `/api/episodes/[id]/download` — download episode audio
+- `/api/episodes/[id]/playback` — GET/PATCH playback position & speed
+- `/api/transcriptions` — POST to enqueue, GET for batch status
+- `/api/transcriptions/[episodeId]` — GET transcript segments & translations
+- `/api/transcriptions/[episodeId]/translate` — POST to trigger translation
+- `/api/transcriptions/status/[episodeId]` — GET transcription status
+- `/api/audio/stream/[episodeId]` — audio streaming with HTTP range support
+- `/api/flashcards`, `/api/flashcards/[id]` — flashcard CRUD
 
-**Playback state persistence**: playback speed is per-podcast; playback position is per-episode; both stored in SQLite.
+**Key patterns**:
+- Server components for reads, API routes for mutations
+- Sequential transcription queue (one at a time, prevents memory issues)
+- Fire-and-forget downloads with concurrency limit of 3
+- Playback speed is per-podcast, playback position is per-episode
+- Transcription: manual trigger, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`
+- Translation auto-triggered after transcription completes (German→Czech via OpenAI)
+- Player: persistent audio player at bottom of page; transcript with karaoke-style highlighting in main content area
 
-**Transcription**: Manual trigger per episode, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`.
-
-**Player layout**: Persistent audio player at the bottom of page; transcript (karaoke-style highlighting) below.
-
+**Key services** (`src/lib/`):
+- `podcast-service.ts` — RSS feed operations, downloads, cascade deletes
+- `transcription-service.ts` — whisper.cpp integration, sequential queue, ffmpeg compression
+- `translation-service.ts` — OpenAI batch translation with context windows
+- `rss.ts` — RSS feed parsing with iTunes duration support
+- `download.ts` — Audio file downloading
 
 ## LLM Models
-- Use `gpt-5.2` for all OpenAI API calls (reasoning model, does not support temperature)
+
+- Use `gpt-5.2` for flashcard generation and reasoning tasks (does not support temperature)
+- Use `gpt-4.1-mini` for translation tasks
