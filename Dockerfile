@@ -51,8 +51,12 @@ ENV COLORTERM=truecolor
 
 EXPOSE 3000
 
-# Copy Parakeet transcription script
+# Copy Parakeet scripts
 COPY scripts/transcribe.py /usr/local/bin/parakeet-transcribe.py
+COPY scripts/download-parakeet.py /usr/local/bin/download-parakeet.py
 
-# Default command: download whisper model if missing, install deps, run dev
-CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && npm run dev"]
+# Default command: download models if missing, install deps, run dev
+CMD ["bash", "-c", "\
+  test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && \
+  test -d /podcast-vocabulary/data/parakeet/hub || HF_HOME=/podcast-vocabulary/data/parakeet python3 /usr/local/bin/download-parakeet.py && \
+  npm install && npm run dev"]
