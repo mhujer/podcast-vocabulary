@@ -2,6 +2,8 @@
 
 Personal app for learning German vocabulary from podcasts. Subscribe to RSS feeds, download episodes locally, play them with a persistent audio player, transcribe using local whisper.cpp, and translate segments from German to Czech.
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 - RSS feed subscription with auto-download of latest episodes
@@ -10,6 +12,7 @@ Personal app for learning German vocabulary from podcasts. Subscribe to RSS feed
 - Karaoke-style transcript display with click-to-play segments
 - German→Czech translation via OpenAI
 - Flashcard creation from transcript words
+- Anki Export
 
 ## Tech Stack
 
