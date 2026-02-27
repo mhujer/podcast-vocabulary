@@ -201,7 +201,7 @@ async function runCanary(compressedPath: string, tmpDir: string): Promise<Whispe
   await new Promise<void>((resolve, reject) => {
     const child = spawn("python3", args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, HF_HOME: join(DATA_DIR, "canary") },
+      env: { ...process.env, HF_HOME: join(DATA_DIR, "parakeet") },
     });
 
     let stderrBuf = "";
