@@ -28,15 +28,9 @@ export async function POST(request: Request) {
     if (existing.status === "pending" || existing.status === "in_progress") {
       return NextResponse.json({ error: "Transcription already in progress" }, { status: 409 });
     }
-    // Delete failed transcription to allow retry
-    if (existing.status === "failed") {
-      await db.delete(transcriptions).where(eq(transcriptions.id, existing.id));
-      console.log("[transcriptions/POST] deleted failed transcription:", existing.id);
-    }
-    // If completed, don't re-transcribe
-    if (existing.status === "completed") {
-      return NextResponse.json({ error: "Transcription already exists" }, { status: 409 });
-    }
+    // Delete failed/completed transcription to allow retry
+    await db.delete(transcriptions).where(eq(transcriptions.id, existing.id));
+    console.log("[transcriptions/POST] deleted existing transcription:", existing.id, "status:", existing.status);
   }
 
   // Insert new transcription — worker will pick it up
