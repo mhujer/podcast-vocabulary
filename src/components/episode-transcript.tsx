@@ -9,10 +9,11 @@ import { Download, Loader2, Plus } from "lucide-react";
 import type { TranscriptionSegment } from "@/types/transcription";
 import type { Flashcard } from "@/db/schema";
 
-interface TranscriptState {
-  episodeId: string;
-  loading: boolean;
-  status: string | null;
+type Engine = "whisper" | "parakeet";
+
+interface EngineTranscript {
+  engine: Engine;
+  status: string;
   segments: TranscriptionSegment[] | null;
   translations: string[] | null;
   translationStatus: string | null;
@@ -20,9 +21,14 @@ interface TranscriptState {
 
 export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episodeTitle }: { episodeId?: string; podcastName?: string; episodeTitle?: string } = {}) {
   const { currentEpisode, currentTime, seek } = usePlayer();
-  const [state, setState] = useState<TranscriptState | null>(null);
+  const [engineTranscripts, setEngineTranscripts] = useState<EngineTranscript[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchedEpisodeId, setFetchedEpisodeId] = useState<string | null>(null);
   const episodeId = episodeIdProp ?? currentEpisode?.id ?? null;
   const abortRef = useRef<AbortController | null>(null);
+
+  const [activeEngine, setActiveEngine] = useState<Engine>("whisper");
+  const [comparisonMode, setComparisonMode] = useState(false);
 
   const [selectedWords, setSelectedWords] = useState<Map<number, Set<number>>>(new Map());
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -32,7 +38,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
   const [visibleSegmentIndex, setVisibleSegmentIndex] = useState(-1);
   const [scrollToSegment, setScrollToSegment] = useState<number | null>(null);
 
-  // Fetch transcription
+  // Fetch transcriptions (now returns array)
   useEffect(() => {
     if (!episodeId) return;
 
@@ -40,31 +46,46 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
     const controller = new AbortController();
     abortRef.current = controller;
 
-    Promise.resolve().then(() => {
-      if (controller.signal.aborted) return;
-      setState({ episodeId, loading: true, status: null, segments: null, translations: null, translationStatus: null });
-    });
+    setLoading(true);
 
     fetch(`/api/transcriptions/${episodeId}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (controller.signal.aborted) return;
-        if (!json) {
-          setState({ episodeId, loading: false, status: null, segments: null, translations: null, translationStatus: null });
+        if (!json || (Array.isArray(json) && json.length === 0)) {
+          setEngineTranscripts([]);
         } else {
-          setState({
-            episodeId,
-            loading: false,
-            status: json.status,
-            segments: json.status === "completed" ? json.segments : null,
-            translations: json.translations ?? null,
-            translationStatus: json.translationStatus ?? null,
-          });
+          // API now returns array
+          const arr = Array.isArray(json) ? json : [json];
+          const transcripts: EngineTranscript[] = arr.map((t: Record<string, unknown>) => ({
+            engine: (t.engine as Engine) || "whisper",
+            status: t.status as string,
+            segments: t.status === "completed" ? (t.segments as TranscriptionSegment[] | null) : null,
+            translations: (t.translations as string[] | null) ?? null,
+            translationStatus: (t.translationStatus as string | null) ?? null,
+          }));
+          setEngineTranscripts(transcripts);
+
+          // Auto-select first completed engine or first available
+          const completed = transcripts.find((t) => t.status === "completed");
+          if (completed) {
+            setActiveEngine(completed.engine);
+          }
+
+          // Auto-enable comparison mode when both have results
+          const completedCount = transcripts.filter((t) => t.status === "completed").length;
+          if (completedCount >= 2) {
+            setComparisonMode(true);
+          }
         }
+        setFetchedEpisodeId(episodeId);
+        setLoading(false);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setState({ episodeId, loading: false, status: null, segments: null, translations: null, translationStatus: null });
+          setEngineTranscripts([]);
+          setFetchedEpisodeId(episodeId);
+          setLoading(false);
         }
       });
 
@@ -82,11 +103,12 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
       .catch(() => setFlashcards([]));
   }, [episodeId]);
 
+  const activeTranscript = engineTranscripts.find((t) => t.engine === activeEngine);
+
   const handleWordToggle = useCallback(
     (segmentIndex: number, wordIndex: number) => {
       setSelectedWords((prev) => {
         const next = new Map<number, Set<number>>();
-        // Only allow selection in one segment at a time
         const existing = prev.get(segmentIndex);
         const set = new Set(existing);
         if (set.has(wordIndex)) {
@@ -104,13 +126,12 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
   );
 
   const getSelectedText = useCallback(() => {
-    if (!state?.segments) return null;
+    if (!activeTranscript?.segments) return null;
     for (const [segIdx, wordIndices] of selectedWords) {
       if (wordIndices.size === 0) continue;
-      const seg = state.segments[segIdx];
+      const seg = activeTranscript.segments[segIdx];
       if (!seg) continue;
 
-      // Get word tokens (merge sub-word tokens into whole words)
       const words: string[] = seg.words
         ? mergeWhisperTokens(seg.words).map((w) => w.text)
         : seg.text.split(/\s+/).filter(Boolean);
@@ -125,9 +146,9 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
       };
     }
     return null;
-  }, [selectedWords, state?.segments]);
+  }, [selectedWords, activeTranscript?.segments]);
 
-  // Compute floating bubble position from selected word elements
+  // Compute floating bubble position
   useLayoutEffect(() => {
     const container = transcriptContainerRef.current;
     if (!container || !getSelectedText()) {
@@ -237,91 +258,169 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
   }, [flashcards, podcastName, episodeTitle]);
 
   if (!episodeId) return null;
-  if (!state || state.episodeId !== episodeId || state.loading) return null;
+  if (loading || fetchedEpisodeId !== episodeId) return null;
 
-  if (state.status === "pending" || state.status === "in_progress") {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Transcription in progress...
-      </div>
-    );
+  // Check if any engine is in progress
+  const inProgress = engineTranscripts.find(
+    (t) => t.status === "pending" || t.status === "in_progress"
+  );
+  const completedTranscripts = engineTranscripts.filter((t) => t.status === "completed" && t.segments);
+
+  if (completedTranscripts.length === 0) {
+    if (inProgress) {
+      return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 px-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Transcription in progress ({inProgress.engine})...
+        </div>
+      );
+    }
+    return null;
   }
 
-  if (!state.segments) return null;
+  const showComparison = comparisonMode && completedTranscripts.length >= 2;
+  const segments = activeTranscript?.segments ?? null;
 
-  const activeSegmentIndex = state.segments.findIndex(
-    (seg) => seg.start <= currentTime && currentTime < seg.end
-  );
+  if (!segments && !showComparison) return null;
+
+  const activeSegmentIndex = segments
+    ? segments.findIndex((seg) => seg.start <= currentTime && currentTime < seg.end)
+    : -1;
   const flashcardTargetIndex = visibleSegmentIndex >= 0 ? visibleSegmentIndex : activeSegmentIndex;
   const hasSelection = getSelectedText() !== null;
   const showPanel = flashcards.length > 0;
 
-  return (
-    <div className="flex gap-4 h-full p-4">
-      <div
-        ref={transcriptContainerRef}
-        className={`relative ${showPanel ? "flex-1 min-w-0" : "w-full"} h-full`}
-      >
-        <TranscriptDisplay
-          segments={state.segments}
-          translations={state.translations}
-          currentTime={currentTime}
-          onSeek={(time) => seek(time)}
-          selectedWords={selectedWords}
-          onWordToggle={handleWordToggle}
-          onVisibleSegmentChange={setVisibleSegmentIndex}
-          flashcardSegments={flashcardSegmentIndices}
-          scrollToSegmentIndex={scrollToSegment}
-        />
-        {hasSelection && bubblePos && (
-          <div
-            className="absolute z-50"
-            style={{ top: bubblePos.top, left: bubblePos.left }}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={creating}
-              onClick={handleCreate}
-              className="shadow-md"
-            >
-              {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-              Create Flashcard
-            </Button>
-          </div>
-        )}
-      </div>
+  // Engine tabs
+  const availableEngines = completedTranscripts.map((t) => t.engine);
 
-      {showPanel && (
-        <div className="w-80 shrink-0 h-full flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold">Flashcards</h3>
-            {podcastName && episodeTitle && (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={handleExportAnki}
-                title="Export to Anki"
+  return (
+    <div className="flex flex-col h-full">
+      {/* Engine tabs */}
+      {availableEngines.length > 1 && (
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1 border-b">
+          {availableEngines.map((eng) => (
+            <button
+              key={eng}
+              onClick={() => {
+                setActiveEngine(eng);
+                setComparisonMode(false);
+                setSelectedWords(new Map());
+              }}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                !comparisonMode && activeEngine === eng
+                  ? "bg-foreground text-background font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {eng === "whisper" ? "Whisper" : "Parakeet"}
+            </button>
+          ))}
+          <button
+            onClick={() => setComparisonMode(true)}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              comparisonMode
+                ? "bg-foreground text-background font-medium"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Side by Side
+          </button>
+        </div>
+      )}
+
+      {/* Content */}
+      {showComparison ? (
+        <div className="flex gap-0 flex-1 min-h-0 overflow-hidden">
+          {completedTranscripts.map((t) => (
+            <div key={t.engine} className="flex-1 min-w-0 border-r last:border-r-0 overflow-y-auto">
+              <div className="px-3 py-2 border-b bg-muted/50">
+                <span className="text-xs font-semibold uppercase">{t.engine === "whisper" ? "Whisper" : "Parakeet"}</span>
+              </div>
+              <div className="p-2">
+                <TranscriptDisplay
+                  segments={t.segments!}
+                  translations={t.translations}
+                  currentTime={currentTime}
+                  onSeek={(time) => seek(time)}
+                  selectedWords={new Map()}
+                  onWordToggle={() => {}}
+                  onVisibleSegmentChange={() => {}}
+                  flashcardSegments={new Set()}
+                  scrollToSegmentIndex={null}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex gap-4 flex-1 min-h-0 p-4">
+          <div
+            ref={transcriptContainerRef}
+            className={`relative ${showPanel ? "flex-1 min-w-0" : "w-full"} h-full`}
+          >
+            {segments && (
+              <TranscriptDisplay
+                segments={segments}
+                translations={activeTranscript?.translations ?? null}
+                currentTime={currentTime}
+                onSeek={(time) => seek(time)}
+                selectedWords={selectedWords}
+                onWordToggle={handleWordToggle}
+                onVisibleSegmentChange={setVisibleSegmentIndex}
+                flashcardSegments={flashcardSegmentIndices}
+                scrollToSegmentIndex={scrollToSegment}
+              />
+            )}
+            {hasSelection && bubblePos && (
+              <div
+                className="absolute z-50"
+                style={{ top: bubblePos.top, left: bubblePos.left }}
               >
-                <Download className="h-3.5 w-3.5" />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={creating}
+                  onClick={handleCreate}
+                  className="shadow-md"
+                >
+                  {creating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  Create Flashcard
+                </Button>
+              </div>
             )}
           </div>
-          <div className="flex-1 min-h-0">
-            <FlashcardPanel
-              flashcards={flashcards}
-              segments={state.segments}
-              activeSegmentIndex={flashcardTargetIndex}
-              onUpdate={handleFlashcardUpdate}
-              onDelete={handleFlashcardDelete}
-              onSegmentClick={setScrollToSegment}
-            />
-          </div>
+
+          {showPanel && (
+            <div className="w-80 shrink-0 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold">Flashcards</h3>
+                {podcastName && episodeTitle && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={handleExportAnki}
+                    title="Export to Anki"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex-1 min-h-0">
+                <FlashcardPanel
+                  flashcards={flashcards}
+                  segments={segments!}
+                  activeSegmentIndex={flashcardTargetIndex}
+                  onUpdate={handleFlashcardUpdate}
+                  onDelete={handleFlashcardDelete}
+                  onSegmentClick={setScrollToSegment}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

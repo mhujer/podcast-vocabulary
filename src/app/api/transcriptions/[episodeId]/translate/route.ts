@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transcriptions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { translateSegments } from "@/lib/translation-service";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ episodeId: string }> }
 ) {
   const { episodeId } = await params;
+  const { engine = "whisper" } = await request.json().catch(() => ({ engine: "whisper" }));
 
   const [row] = await db.select().from(transcriptions)
-    .where(eq(transcriptions.episodeId, episodeId));
+    .where(and(eq(transcriptions.episodeId, episodeId), eq(transcriptions.engine, engine)));
 
   if (!row) {
-    return NextResponse.json({ error: "Transcription not found" }, { status: 404 });
+    return NextResponse.json({ error: `Transcription not found for engine: ${engine}` }, { status: 404 });
   }
 
   if (row.status !== "completed") {

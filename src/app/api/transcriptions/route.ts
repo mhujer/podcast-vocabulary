@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { episodes, transcriptions } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { transcribeEpisode } from "@/lib/transcription-service";
+import type { TranscriptionEngine } from "@/lib/transcription-service";
 
 export async function POST(request: Request) {
-  const { episodeId } = await request.json();
-  console.log("[transcriptions/POST] episodeId:", episodeId);
+  const { episodeId, engine = "whisper" } = await request.json() as {
+    episodeId: string;
+    engine?: TranscriptionEngine;
+  };
+  console.log("[transcriptions/POST] episodeId:", episodeId, "engine:", engine);
+
+  if (engine !== "whisper" && engine !== "parakeet") {
+    return NextResponse.json({ error: `Invalid engine: ${engine}` }, { status: 400 });
+  }
 
   // Validate episode exists and is downloaded
   const [episode] = await db.select().from(episodes).where(eq(episodes.id, episodeId));
@@ -20,12 +28,12 @@ export async function POST(request: Request) {
   }
   console.log("[transcriptions/POST] episode filePath:", episode.filePath);
 
-  // Check for existing pending/in_progress transcription
+  // Check for existing transcription for this (episodeId, engine) pair
   const [existing] = await db.select().from(transcriptions)
-    .where(eq(transcriptions.episodeId, episodeId));
+    .where(and(eq(transcriptions.episodeId, episodeId), eq(transcriptions.engine, engine)));
 
   if (existing) {
-    console.log("[transcriptions/POST] existing transcription:", existing.id, "status:", existing.status);
+    console.log("[transcriptions/POST] existing transcription:", existing.id, "status:", existing.status, "engine:", engine);
     if (existing.status === "pending" || existing.status === "in_progress") {
       return NextResponse.json({ error: "Transcription already in progress" }, { status: 409 });
     }
@@ -42,12 +50,12 @@ export async function POST(request: Request) {
 
   // Insert new transcription
   const [row] = await db.insert(transcriptions)
-    .values({ episodeId, status: "pending" })
+    .values({ episodeId, engine, status: "pending" })
     .returning();
-  console.log("[transcriptions/POST] created transcription:", row.id, "— starting transcribeEpisode");
+  console.log("[transcriptions/POST] created transcription:", row.id, "engine:", engine, "— starting transcribeEpisode");
 
   // Fire-and-forget
-  transcribeEpisode(row.id, episodeId).catch((err) =>
+  transcribeEpisode(row.id, episodeId, engine).catch((err) =>
     console.error("[transcriptions/POST] transcribeEpisode unhandled error:", err)
   );
 
@@ -66,6 +74,7 @@ export async function GET(request: Request) {
   const rows = await db.select({
     id: transcriptions.id,
     episodeId: transcriptions.episodeId,
+    engine: transcriptions.engine,
     status: transcriptions.status,
     errorMessage: transcriptions.errorMessage,
   }).from(transcriptions)

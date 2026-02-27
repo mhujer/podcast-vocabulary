@@ -18,6 +18,15 @@ sqlite.pragma("foreign_keys = ON");
 export const db = drizzle(sqlite, { schema });
 export { DATA_DIR, AUDIO_DIR, DB_PATH };
 
+// Migration: add engine column to transcriptions
+{
+  const cols = sqlite.pragma("table_info(transcriptions)") as { name: string }[];
+  if (!cols.some((c) => c.name === "engine")) {
+    sqlite.prepare(`ALTER TABLE transcriptions ADD COLUMN engine TEXT NOT NULL DEFAULT 'whisper'`).run();
+    console.log("[db] migrated: added engine column to transcriptions");
+  }
+}
+
 // Mark interrupted transcriptions as failed on startup
 sqlite.prepare(
   `UPDATE transcriptions SET status = 'failed', error_message = 'Transcription was interrupted by app restart' WHERE status = 'in_progress'`

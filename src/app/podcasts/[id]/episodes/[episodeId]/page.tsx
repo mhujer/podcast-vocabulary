@@ -32,10 +32,24 @@ export default async function EpisodeDetailPage({
 
   if (!episode) notFound();
 
-  const [transcription] = await db
+  const allTranscriptions = await db
     .select()
     .from(transcriptions)
     .where(eq(transcriptions.episodeId, episodeId));
+
+  const whisperT = allTranscriptions.find((t) => t.engine === "whisper");
+  const parakeetT = allTranscriptions.find((t) => t.engine === "parakeet");
+
+  const engineStatuses = {
+    whisper: {
+      status: whisperT?.status ?? null,
+      translationStatus: whisperT?.translationStatus ?? null,
+    },
+    parakeet: {
+      status: parakeetT?.status ?? null,
+      translationStatus: parakeetT?.translationStatus ?? null,
+    },
+  };
 
   return (
     <main className="flex h-screen">
@@ -57,8 +71,7 @@ export default async function EpisodeDetailPage({
         <EpisodeActions
           episode={episode}
           podcast={podcast}
-          transcriptionStatus={transcription?.status ?? null}
-          translationStatus={transcription?.translationStatus ?? null}
+          engineStatuses={engineStatuses}
         />
 
         <SidebarPlayer />
