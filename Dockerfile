@@ -5,7 +5,7 @@ FROM node:24-slim
 ARG APP_DIR=/podcast-vocabulary
 
 # Install git, curl, and python3 for Claude Code (python3 needed for custom statusline)
-RUN apt-get update && apt-get install -y git curl python3 ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl python3 ffmpeg supervisor && rm -rf /var/lib/apt/lists/*
 
 # Copy whisper-cli binary, shared libraries, and model download script from whisper build stage
 COPY --from=whisper /app/build/bin/whisper-cli /usr/local/bin/whisper-cli
@@ -48,5 +48,5 @@ ENV COLORTERM=truecolor
 
 EXPOSE 3000
 
-# Default command: download whisper model if missing, install deps, run dev
-CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && npm run dev"]
+# Default command: download whisper model if missing, install deps, run supervisord
+CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && exec supervisord -c supervisord.conf"]

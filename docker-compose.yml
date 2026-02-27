@@ -4,6 +4,7 @@ services:
     user: '${UID}:${GID}'
     ports:
       - '127.0.0.1:3000:3000'
+      - '127.0.0.1:9001:9001'
     volumes:
       - .:/podcast-vocabulary
       - ${HOME}/.claude:/home/node/.claude

@@ -2,23 +2,20 @@ import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import { readFileSync, mkdirSync, rmSync, existsSync, statSync } from "fs";
 import { join } from "path";
-import { db } from "@/db";
 import { transcriptions, episodes } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { TranscriptionSegment, TranscriptionWord } from "@/types/transcription";
-import { DATA_DIR } from "@/db";
-import { translateSegments } from "@/lib/translation-service";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "@/db/schema";
 
 const execFileAsync = promisify(execFile);
-const TMP_DIR = join(DATA_DIR, "audio", "tmp");
-const WHISPER_MODEL = join(DATA_DIR, "whisper", "ggml-medium.bin");
 
 function log(...args: unknown[]) {
   console.log("[transcription-service]", ...args);
 }
 
-async function compressAudio(inputPath: string, episodeId: string): Promise<string> {
-  const outDir = join(TMP_DIR, episodeId);
+async function compressAudio(tmpDir: string, inputPath: string, episodeId: string): Promise<string> {
+  const outDir = join(tmpDir, episodeId);
   mkdirSync(outDir, { recursive: true });
   const outPath = join(outDir, "compressed.wav");
   await execFileAsync("ffmpeg", [
@@ -84,65 +81,15 @@ function groupWordsIntoSegments(wordSegments: WhisperJsonSegment[]): Transcripti
   return segments;
 }
 
-// --- DB-driven sequential transcription queue ---
-let processing = false;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function enqueueTranscription(_transcriptionId: string, _episodeId: string) {
-  // DB row already inserted by the API route with status='pending'.
-  // Just kick the processing loop.
-  log("enqueue called, triggering processing");
-  triggerProcessing();
-}
-
-export function triggerProcessing() {
-  if (processing) {
-    log("triggerProcessing: already processing, skipping");
-    return;
-  }
-  processing = true;
-  log("triggerProcessing: starting processLoop");
-  processLoop().finally(() => {
-    processing = false;
-    log("processLoop finished, processing flag reset");
-  });
-}
-
-async function processLoop() {
-  while (true) {
-    // Pick the oldest pending transcription by rowid (FIFO)
-    const [next] = await db
-      .select({ id: transcriptions.id, episodeId: transcriptions.episodeId })
-      .from(transcriptions)
-      .where(eq(transcriptions.status, "pending"))
-      .orderBy(sql`rowid`)
-      .limit(1);
-
-    if (!next) {
-      log("no more pending transcriptions, stopping loop");
-      break;
-    }
-
-    log("processing next from DB", { transcriptionId: next.id, episodeId: next.episodeId });
-    try {
-      await transcribeEpisode(next.id, next.episodeId);
-    } catch (err) {
-      // Catch unexpected errors so the loop continues with remaining items
-      const message = err instanceof Error ? err.message : String(err);
-      log("unexpected error in processLoop iteration:", message);
-      try {
-        await db.update(transcriptions)
-          .set({ status: "failed", errorMessage: message })
-          .where(eq(transcriptions.id, next.id));
-      } catch (dbErr) {
-        log("failed to mark transcription as failed in DB:", dbErr);
-      }
-    }
-  }
-}
-
-export async function transcribeEpisode(transcriptionId: string, episodeId: string): Promise<void> {
-  const tmpDir = join(TMP_DIR, episodeId);
+export async function transcribeEpisode(
+  db: BetterSQLite3Database<typeof schema>,
+  dataDir: string,
+  transcriptionId: string,
+  episodeId: string,
+): Promise<void> {
+  const tmpDir = join(dataDir, "audio", "tmp");
+  const whisperModel = join(dataDir, "whisper", "ggml-medium.bin");
+  const episodeTmpDir = join(tmpDir, episodeId);
   log("start", { transcriptionId, episodeId });
 
   try {
@@ -155,17 +102,17 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       throw new Error("Episode audio file not found");
     }
     log("audio file:", episode.filePath, "exists:", existsSync(episode.filePath));
-    log("whisper model:", WHISPER_MODEL, "exists:", existsSync(WHISPER_MODEL));
+    log("whisper model:", whisperModel, "exists:", existsSync(whisperModel));
 
     // Compress to mono 16kHz WAV for whisper.cpp
     log("compressing audio...");
-    const compressedPath = await compressAudio(episode.filePath, episodeId);
+    const compressedPath = await compressAudio(tmpDir, episode.filePath, episodeId);
     log("compressed to:", compressedPath, "exists:", existsSync(compressedPath));
 
     // Output file path (whisper-cli appends .json)
-    const outputBase = join(tmpDir, "output");
+    const outputBase = join(episodeTmpDir, "output");
     const whisperArgs = [
-      "-m", WHISPER_MODEL,
+      "-m", whisperModel,
       "-f", compressedPath,
       "-l", "de",
       "-ml", "1",
@@ -251,12 +198,6 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
         translationStatus: "pending",
       })
       .where(eq(transcriptions.id, transcriptionId));
-
-    // Auto-trigger translation (fire-and-forget)
-    log("auto-triggering translation for", transcriptionId);
-    translateSegments(transcriptionId).catch((err) =>
-      log("translation auto-trigger error:", err)
-    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log("ERROR:", message);
@@ -265,7 +206,7 @@ export async function transcribeEpisode(transcriptionId: string, episodeId: stri
       .where(eq(transcriptions.id, transcriptionId));
   } finally {
     try {
-      rmSync(tmpDir, { recursive: true, force: true });
+      rmSync(episodeTmpDir, { recursive: true, force: true });
     } catch {
       // ignore cleanup errors
     }

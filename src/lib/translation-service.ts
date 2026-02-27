@@ -1,10 +1,11 @@
-import { db } from "@/db";
 import { transcriptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import type { TranscriptionSegment } from "@/types/transcription";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "@/db/schema";
 
 const BATCH_SIZE = 30;
 const CONTEXT_WINDOW = 2;
@@ -13,7 +14,10 @@ function log(...args: unknown[]) {
   console.log("[translation-service]", ...args);
 }
 
-export async function translateSegments(transcriptionId: string): Promise<void> {
+export async function translateSegments(
+  db: BetterSQLite3Database<typeof schema>,
+  transcriptionId: string,
+): Promise<void> {
   log("start", { transcriptionId });
 
   try {

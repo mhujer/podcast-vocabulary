@@ -26,52 +26,6 @@ declare global {
 if (!globalThis.__dbInitialized) {
   globalThis.__dbInitialized = true;
 
-  // Mark interrupted transcriptions as failed on startup
-  sqlite.prepare(
-    `UPDATE transcriptions SET status = 'failed', error_message = 'Transcription was interrupted by app restart' WHERE status = 'in_progress'`
-  ).run();
-
-  // Trigger processing loop to pick up any pending transcriptions from DB
-  import("@/lib/transcription-service").then(({ triggerProcessing }) => {
-    const pendingCount = sqlite.prepare(
-      `SELECT COUNT(*) as count FROM transcriptions WHERE status = 'pending'`
-    ).get() as { count: number };
-    if (pendingCount.count > 0) {
-      console.log(`[db] ${pendingCount.count} pending transcriptions found, triggering processing`);
-      triggerProcessing();
-    }
-  }).catch(console.error);
-
-  // Mark interrupted translations as failed on startup
-  sqlite.prepare(
-    `UPDATE transcriptions SET translation_status = 'failed', translation_error = 'Translation was interrupted by app restart' WHERE translation_status = 'in_progress'`
-  ).run();
-
-  // Backfill translations for completed transcriptions that haven't been translated
-  async function backfillTranslations() {
-    const { translateSegments } = await import("@/lib/translation-service");
-    const rows = sqlite.prepare(
-      `SELECT id FROM transcriptions WHERE status = 'completed' AND (translation_status IS NULL OR translation_status = 'failed')`
-    ).all() as { id: string }[];
-
-    if (rows.length === 0) return;
-    console.log(`[db] backfilling translations for ${rows.length} transcriptions`);
-
-    for (const row of rows) {
-      sqlite.prepare(
-        `UPDATE transcriptions SET translation_status = 'pending' WHERE id = ?`
-      ).run(row.id);
-
-      try {
-        await translateSegments(row.id);
-      } catch (err) {
-        console.error(`[db] backfill translation failed for ${row.id}:`, err);
-      }
-    }
-  }
-
-  backfillTranslations().catch(console.error);
-
   // Seed from OPML if the podcasts table is empty
   const podcastCount = sqlite.prepare("SELECT COUNT(*) as count FROM podcasts").get() as { count: number } | undefined;
   if (podcastCount && podcastCount.count === 0) {

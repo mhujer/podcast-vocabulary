@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { episodes, transcriptions } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { enqueueTranscription } from "@/lib/transcription-service";
 
 export async function POST(request: Request) {
   const { episodeId } = await request.json();
@@ -40,14 +39,11 @@ export async function POST(request: Request) {
     }
   }
 
-  // Insert new transcription
+  // Insert new transcription — worker will pick it up
   const [row] = await db.insert(transcriptions)
     .values({ episodeId, status: "pending" })
     .returning();
-  console.log("[transcriptions/POST] created transcription:", row.id, "— starting transcribeEpisode");
-
-  // Enqueue for sequential processing
-  enqueueTranscription(row.id, episodeId);
+  console.log("[transcriptions/POST] created transcription:", row.id, "— queued for worker");
 
   return NextResponse.json({ id: row.id }, { status: 202 });
 }

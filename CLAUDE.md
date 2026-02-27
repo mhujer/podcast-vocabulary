@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Maintenance
 
-When adding/removing API routes, DB tables, or making key architectural changes, update the relevant sections in this file to keep it in sync.
+When adding/removing API routes, DB tables, or making key architectural changes, always update the relevant sections in this file to keep it in sync.
 
 ## General
 
@@ -15,6 +15,7 @@ When adding/removing API routes, DB tables, or making key architectural changes,
 
 ```bash
 npm run dev        # Start dev server (port 3000)
+npm run worker     # Start transcription worker (standalone)
 npm run build      # Production build
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript type check
@@ -31,7 +32,7 @@ Always run ESLint and TypeScript type check after making changes.
 
 **App Router**: All pages and API routes live under `src/app/`. Path alias `@/*` maps to `src/*`.
 
-**Docker**: App runs in Docker with whisper.cpp binary, ffmpeg, and Node.js bundled. Use `docker-compose.yml` to run.
+**Docker**: App runs in Docker with whisper.cpp binary, ffmpeg, and Node.js bundled. Supervisord manages two processes: Next.js dev server and the transcription worker. Web UI at port 9001. Use `docker-compose.yml` to run.
 
 **Storage** (Docker volume at `/data`):
 - `/data/podcasts.db` — SQLite database (WAL mode, foreign keys enabled)
@@ -63,7 +64,7 @@ Always run ESLint and TypeScript type check after making changes.
 
 **Key patterns**:
 - Server components for reads, API routes for mutations
-- Sequential transcription queue (one at a time, prevents memory issues)
+- Background worker process (`src/worker/transcription-worker.ts`) polls DB for pending transcriptions/translations, processes sequentially (one at a time, prevents memory issues)
 - Fire-and-forget downloads with concurrency limit of 3
 - Playback speed is per-podcast, playback position is per-episode
 - Transcription: manual trigger, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`
@@ -72,7 +73,7 @@ Always run ESLint and TypeScript type check after making changes.
 
 **Key services** (`src/lib/`):
 - `podcast-service.ts` — RSS feed operations, downloads, cascade deletes
-- `transcription-service.ts` — whisper.cpp integration, sequential queue, ffmpeg compression
+- `transcription-service.ts` — whisper.cpp integration, ffmpeg compression (pure functions, no queue)
 - `translation-service.ts` — OpenAI batch translation with context windows
 - `rss.ts` — RSS feed parsing with iTunes duration support
 - `download.ts` — Audio file downloading
