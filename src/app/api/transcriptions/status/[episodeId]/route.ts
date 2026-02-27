@@ -9,18 +9,15 @@ export async function GET(
 ) {
   const { episodeId } = await params;
 
-  const rows = await db.select({
-    engine: transcriptions.engine,
+  const [row] = await db.select({
     status: transcriptions.status,
     errorMessage: transcriptions.errorMessage,
-    translationStatus: transcriptions.translationStatus,
   }).from(transcriptions)
     .where(eq(transcriptions.episodeId, episodeId));
 
-  if (rows.length === 0) {
+  if (!row) {
     return NextResponse.json({ status: null });
   }
 
-  // Return array of statuses per engine
-  return NextResponse.json(rows);
+  return NextResponse.json(row);
 }

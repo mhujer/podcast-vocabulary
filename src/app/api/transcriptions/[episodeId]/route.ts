@@ -9,18 +9,16 @@ export async function GET(
 ) {
   const { episodeId } = await params;
 
-  const rows = await db.select().from(transcriptions)
+  const [row] = await db.select().from(transcriptions)
     .where(eq(transcriptions.episodeId, episodeId));
 
-  if (rows.length === 0) {
+  if (!row) {
     return NextResponse.json({ error: "Transcription not found" }, { status: 404 });
   }
 
-  const result = rows.map((row) => ({
+  return NextResponse.json({
     ...row,
     segments: row.segments ? JSON.parse(row.segments) : null,
     translations: row.translations ? JSON.parse(row.translations) : null,
-  }));
-
-  return NextResponse.json(result);
+  });
 }

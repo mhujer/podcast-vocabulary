@@ -8,13 +8,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import type { Episode, Podcast } from "@/db/schema";
 
-interface TranscriptionStatusRow {
-  episodeId: string;
-  engine: string;
-  status: string;
-  errorMessage: string | null;
-}
-
 interface TranscriptionStatus {
   episodeId: string;
   status: string;
@@ -41,15 +34,10 @@ export function EpisodeList({
     if (!ids.length) return;
     try {
       const res = await fetch(`/api/transcriptions?episodeIds=${downloadedIdsKey}`);
-      const rows: TranscriptionStatusRow[] = await res.json();
-      // Aggregate: pick best status per episode (completed > in_progress > pending > failed)
+      const rows: TranscriptionStatus[] = await res.json();
       const map: Record<string, TranscriptionStatus> = {};
-      const priority: Record<string, number> = { completed: 3, in_progress: 2, pending: 1, failed: 0 };
       for (const row of rows) {
-        const existing = map[row.episodeId];
-        if (!existing || (priority[row.status] ?? 0) > (priority[existing.status] ?? 0)) {
-          map[row.episodeId] = { episodeId: row.episodeId, status: row.status, errorMessage: row.errorMessage };
-        }
+        map[row.episodeId] = row;
       }
       setStatuses(map);
     } catch {

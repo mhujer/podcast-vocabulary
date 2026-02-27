@@ -4,11 +4,8 @@ FROM node:24-slim
 
 ARG APP_DIR=/podcast-vocabulary
 
-# Install git, curl, python3/pip, and ffmpeg
-RUN apt-get update && apt-get install -y git curl python3 python3-pip python3-venv ffmpeg && rm -rf /var/lib/apt/lists/*
-
-# Install Parakeet dependencies (onnx-asr with hub support + onnxruntime)
-RUN pip3 install --break-system-packages onnx-asr[hub] onnxruntime
+# Install git, curl, and python3 for Claude Code (python3 needed for custom statusline)
+RUN apt-get update && apt-get install -y git curl python3 ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Copy whisper-cli binary, shared libraries, and model download script from whisper build stage
 COPY --from=whisper /app/build/bin/whisper-cli /usr/local/bin/whisper-cli
@@ -50,9 +47,6 @@ RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/node/.bashrc
 ENV COLORTERM=truecolor
 
 EXPOSE 3000
-
-# Copy Parakeet transcription script
-COPY scripts/transcribe.py /usr/local/bin/parakeet-transcribe.py
 
 # Default command: download whisper model if missing, install deps, run dev
 CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && npm run dev"]

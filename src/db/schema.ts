@@ -33,7 +33,6 @@ export const transcriptions = sqliteTable("transcriptions", {
   episodeId: text("episode_id")
     .notNull()
     .references(() => episodes.id, { onDelete: "cascade" }),
-  engine: text("engine").notNull().default("whisper"), // "whisper" | "parakeet"
   segments: text("segments"), // JSON array of {start_time, end_time, text}
   transcribedAt: text("transcribed_at"),
   status: text("status").notNull().default("pending"), // pending | in_progress | completed | failed
