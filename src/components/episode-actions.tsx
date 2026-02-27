@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import type { Episode, Podcast } from "@/db/schema";
 
-type Engine = "whisper" | "parakeet" | "canary";
+type Engine = "whisper" | "parakeet";
 
 interface EngineStatus {
   status: string | null;
@@ -75,11 +75,10 @@ export function EpisodeActions({
     }
   };
 
-  const handleTranscribeAll = async () => {
+  const handleTranscribeBoth = async () => {
     await Promise.all([
       handleTranscribe("whisper"),
       handleTranscribe("parakeet"),
-      handleTranscribe("canary"),
     ]);
   };
 
@@ -168,7 +167,7 @@ export function EpisodeActions({
     );
   };
 
-  const allIdle = !statuses.whisper.status && !statuses.parakeet.status && !statuses.canary.status;
+  const bothIdle = !statuses.whisper.status && !statuses.parakeet.status;
 
   return (
     <div className="flex flex-col gap-2">
@@ -194,10 +193,10 @@ export function EpisodeActions({
           </Button>
         )}
 
-        {episode.filePath && allIdle && (
-          <Button variant="outline" size="sm" onClick={handleTranscribeAll}>
+        {episode.filePath && bothIdle && (
+          <Button variant="outline" size="sm" onClick={handleTranscribeBoth}>
             <FileText className="h-4 w-4 mr-1" />
-            Transcribe All
+            Transcribe Both
           </Button>
         )}
       </div>
@@ -206,7 +205,6 @@ export function EpisodeActions({
         <div className="flex flex-col gap-1">
           {renderEngineButton("whisper", "Whisper")}
           {renderEngineButton("parakeet", "Parakeet")}
-          {renderEngineButton("canary", "Canary")}
         </div>
       )}
     </div>

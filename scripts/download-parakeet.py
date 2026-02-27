@@ -26,12 +26,3 @@ cached_note = " (likely cached)" if elapsed < 1.0 else ""
 print(f"[parakeet] VAD model ready in {elapsed:.1f}s{cached_note}")
 
 print("[parakeet] models ready")
-
-print("[canary] downloading nemo-canary-1b-v2 model...")
-t0 = time.time()
-onnx_asr.load_model("nemo-canary-1b-v2")
-elapsed = time.time() - t0
-cached_note = " (likely cached)" if elapsed < 1.0 else ""
-print(f"[canary] ASR model ready in {elapsed:.1f}s{cached_note}")
-
-print("[canary] models ready")

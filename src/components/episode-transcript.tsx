@@ -9,7 +9,7 @@ import { Download, Loader2, Plus } from "lucide-react";
 import type { TranscriptionSegment } from "@/types/transcription";
 import type { Flashcard } from "@/db/schema";
 
-type Engine = "whisper" | "parakeet" | "canary";
+type Engine = "whisper" | "parakeet";
 
 interface EngineTranscript {
   engine: Engine;
@@ -312,7 +312,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {eng === "whisper" ? "Whisper" : eng === "parakeet" ? "Parakeet" : "Canary"}
+              {eng === "whisper" ? "Whisper" : "Parakeet"}
             </button>
           ))}
           <button
@@ -334,7 +334,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
           {completedTranscripts.map((t) => (
             <div key={t.engine} className="flex-1 min-w-0 border-r last:border-r-0 overflow-y-auto">
               <div className="px-3 py-2 border-b bg-muted/50">
-                <span className="text-xs font-semibold uppercase">{t.engine === "whisper" ? "Whisper" : t.engine === "parakeet" ? "Parakeet" : "Canary"}</span>
+                <span className="text-xs font-semibold uppercase">{t.engine === "whisper" ? "Whisper" : "Parakeet"}</span>
               </div>
               <div className="p-2">
                 <TranscriptDisplay

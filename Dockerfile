@@ -51,9 +51,8 @@ ENV COLORTERM=truecolor
 
 EXPOSE 3000
 
-# Copy Parakeet and Canary scripts
+# Copy Parakeet scripts
 COPY scripts/transcribe.py /usr/local/bin/parakeet-transcribe.py
-COPY scripts/transcribe-canary.py /usr/local/bin/canary-transcribe.py
 COPY scripts/download-parakeet.py /usr/local/bin/download-parakeet.py
 
 # Default command: download models if missing, install deps, run dev
