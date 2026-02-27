@@ -2,6 +2,19 @@
 
 Personal app for learning German vocabulary from podcasts. Subscribe to RSS feeds, download episodes locally, play them with a persistent audio player, transcribe using local whisper.cpp, and translate segments from German to Czech.
 
+---
+
+Why I created this (with Claude Code)? Listening to podcasts is a nice way to practice listening to the language and learn new vocabulary. In the past I sometimes created flashcards manually from podcasts I was listening, but it was really tedious. Now it occurred to me, that I can create my personal tool which will be finetuned for my workflow.
+
+How it works?
+1. I usually listen to the podcast episode first when walking outside
+2. If it is good, I download it via my app and have it transcribed
+3. Then I listen to the episode again and when there is a word I'd like to have in my vocabulary, I select it let the LLM create a flashcard for me
+4. After I'm done with the episode, I export the flashcards to CSV and import this CSV to Anki
+
+
+---
+
 ![Screenshot](screenshot.png)
 
 ## Features
