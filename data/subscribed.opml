@@ -7,6 +7,7 @@
     <outline text="feeds">
       <outline type="rss" text="Langsam Gesprochene Nachrichten | Audios | DW Deutsch lernen" xmlUrl="https://rss.dw.com/xml/DKpodcast_lgn_de" />
       <outline type="rss" text="Easy German: Learn German with native speakers | Deutsch lernen mit Muttersprachlern" xmlUrl="https://podcast.easygerman.org/rss" />
+      <outline type="rss" text="News in Slow German (Intermediate)" xmlUrl="http://feeds.libsyn.com/85667/rss" />
     </outline>
   </body>
 </opml>
