@@ -55,9 +55,11 @@ EXPOSE 3000
 COPY scripts/transcribe.py /usr/local/bin/parakeet-transcribe.py
 COPY scripts/transcribe-canary.py /usr/local/bin/canary-transcribe.py
 COPY scripts/download-parakeet.py /usr/local/bin/download-parakeet.py
+COPY scripts/download-canary.py /usr/local/bin/download-canary.py
 
 # Default command: download models if missing, install deps, run dev
 CMD ["bash", "-c", "\
   test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && \
   test -d /podcast-vocabulary/data/parakeet/hub || HF_HOME=/podcast-vocabulary/data/parakeet python3 /usr/local/bin/download-parakeet.py && \
+  test -d /podcast-vocabulary/data/canary/hub || HF_HOME=/podcast-vocabulary/data/canary python3 /usr/local/bin/download-canary.py && \
   npm install && npm run dev"]
