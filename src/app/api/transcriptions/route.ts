@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   };
   console.log("[transcriptions/POST] episodeId:", episodeId, "engine:", engine);
 
-  if (engine !== "whisper" && engine !== "parakeet") {
+  if (engine !== "whisper" && engine !== "parakeet" && engine !== "canary") {
     return NextResponse.json({ error: `Invalid engine: ${engine}` }, { status: 400 });
   }
 

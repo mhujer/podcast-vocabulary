@@ -13,7 +13,7 @@ const execFileAsync = promisify(execFile);
 const TMP_DIR = join(DATA_DIR, "audio", "tmp");
 const WHISPER_MODEL = join(DATA_DIR, "whisper", "ggml-medium.bin");
 
-export type TranscriptionEngine = "whisper" | "parakeet";
+export type TranscriptionEngine = "whisper" | "parakeet" | "canary";
 
 function log(...args: unknown[]) {
   console.log("[transcription-service]", ...args);
@@ -193,6 +193,55 @@ async function runParakeet(compressedPath: string, tmpDir: string): Promise<Whis
   return JSON.parse(raw);
 }
 
+async function runCanary(compressedPath: string, tmpDir: string): Promise<WhisperJsonOutput> {
+  const outputPath = join(tmpDir, "canary-output.json");
+  const args = ["/usr/local/bin/canary-transcribe.py", compressedPath, outputPath];
+  log("running canary with args:", args.join(" "));
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("python3", args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, HF_HOME: join(DATA_DIR, "parakeet") },
+    });
+
+    let stderrBuf = "";
+
+    child.stdout.on("data", (data: Buffer) => {
+      for (const line of data.toString().split("\n")) {
+        if (line.trim()) log("[canary stdout]", line);
+      }
+    });
+
+    child.stderr.on("data", (data: Buffer) => {
+      const chunk = data.toString();
+      stderrBuf += chunk;
+      for (const line of chunk.split("\n")) {
+        if (line.trim()) log("[canary stderr]", line);
+      }
+    });
+
+    child.on("close", (code, signal) => {
+      log("canary exited, code:", code, "signal:", signal);
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(
+          `canary failed (code ${code}, signal ${signal}): ${stderrBuf.slice(0, 2000)}`
+        ));
+      }
+    });
+
+    child.on("error", (err) => {
+      log("canary spawn error:", err.message);
+      reject(err);
+    });
+  });
+
+  log("reading output:", outputPath, "exists:", existsSync(outputPath));
+  const raw = readFileSync(outputPath, "utf-8");
+  return JSON.parse(raw);
+}
+
 export async function transcribeEpisode(
   transcriptionId: string,
   episodeId: string,
@@ -226,7 +275,9 @@ export async function transcribeEpisode(
     // Run the selected engine
     const whisperOutput = engine === "parakeet"
       ? await runParakeet(compressedPath, tmpDir)
-      : await runWhisper(compressedPath, tmpDir);
+      : engine === "canary"
+        ? await runCanary(compressedPath, tmpDir)
+        : await runWhisper(compressedPath, tmpDir);
 
     const endTime = Date.now();
     const durationSec = (endTime - startTime) / 1000;

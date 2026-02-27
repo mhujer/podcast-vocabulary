@@ -39,6 +39,7 @@ export default async function EpisodeDetailPage({
 
   const whisperT = allTranscriptions.find((t) => t.engine === "whisper");
   const parakeetT = allTranscriptions.find((t) => t.engine === "parakeet");
+  const canaryT = allTranscriptions.find((t) => t.engine === "canary");
 
   const engineStatuses = {
     whisper: {
@@ -48,6 +49,10 @@ export default async function EpisodeDetailPage({
     parakeet: {
       status: parakeetT?.status ?? null,
       translationStatus: parakeetT?.translationStatus ?? null,
+    },
+    canary: {
+      status: canaryT?.status ?? null,
+      translationStatus: canaryT?.translationStatus ?? null,
     },
   };
 
