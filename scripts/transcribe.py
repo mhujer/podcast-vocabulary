@@ -8,6 +8,7 @@ Output JSON matches whisper-cli format:
 """
 
 import json
+import os
 import sys
 import time
 
@@ -19,21 +20,41 @@ def main():
     input_path = sys.argv[1]
     output_path = sys.argv[2]
 
-    print(f"[parakeet] loading model nemo-parakeet-tdt-0.6b-v3 ...")
+    # --- Model loading ---
+    print(f"[parakeet] loading ASR model nemo-parakeet-tdt-0.6b-v3 ...")
+    t0 = time.time()
     import onnx_asr
-
     model = onnx_asr.load_model("nemo-parakeet-tdt-0.6b-v3")
+    print(f"[parakeet] ASR model loaded in {time.time() - t0:.1f}s")
+
+    t0 = time.time()
+    print(f"[parakeet] loading Silero VAD model ...")
     vad = onnx_asr.load_vad("silero")
+    print(f"[parakeet] VAD model loaded in {time.time() - t0:.1f}s")
 
+    t0 = time.time()
     ts_model = model.with_vad(vad).with_timestamps()
+    print(f"[parakeet] timestamped model ready in {time.time() - t0:.1f}s")
 
-    print(f"[parakeet] transcribing {input_path} ...")
+    # --- Input file info ---
+    file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    print(f"[parakeet] input file: {input_path} ({file_size_mb:.1f} MB)")
+
+    # --- Transcription ---
+    print(f"[parakeet] transcribing ...")
     start = time.time()
 
     # Collect word-level entries from all VAD segments
     words = []
+    seg_idx = 0
     for segment in ts_model.recognize(input_path):
         seg_start = segment.start  # seconds
+        seg_end = segment.end if hasattr(segment, 'end') else None
+        num_tokens = len(segment.tokens) if segment.tokens else 0
+        end_str = f"{seg_end:.1f}" if seg_end is not None else "?"
+        print(f"[parakeet] segment {seg_idx}: {seg_start:.1f}s–{end_str}s, {num_tokens} tokens")
+        seg_idx += 1
+
         if segment.tokens and segment.timestamps:
             for token, ts in zip(segment.tokens, segment.timestamps):
                 token_text = token.strip()
@@ -47,7 +68,16 @@ def main():
                     "start_ms": abs_start_ms,
                 })
 
-    # Compute end times (next token start, or +200ms for last token in run)
+    # --- Token collection summary ---
+    if words:
+        span_start_s = words[0]["start_ms"] / 1000
+        span_end_s = words[-1]["start_ms"] / 1000
+        print(f"[parakeet] collected {len(words)} words spanning {span_start_s:.1f}s–{span_end_s:.1f}s")
+    else:
+        print(f"[parakeet] collected 0 words")
+
+    # --- Compute end times ---
+    print(f"[parakeet] computing end times ...")
     transcription = []
     for i, w in enumerate(words):
         if i + 1 < len(words):
@@ -62,10 +92,12 @@ def main():
     elapsed = time.time() - start
     print(f"[parakeet] done in {elapsed:.1f}s, {len(transcription)} word tokens")
 
+    # --- Write output ---
     with open(output_path, "w") as f:
         json.dump({"transcription": transcription}, f)
 
-    print(f"[parakeet] wrote {output_path}")
+    out_size_kb = os.path.getsize(output_path) / 1024
+    print(f"[parakeet] wrote {output_path} ({out_size_kb:.1f} KB)")
 
 if __name__ == "__main__":
     main()
