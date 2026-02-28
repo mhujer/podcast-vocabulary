@@ -4,7 +4,8 @@ import type { InferSelectModel } from "drizzle-orm";
 export const podcasts = sqliteTable("podcasts", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
-  rssUrl: text("rss_url").notNull(),
+  type: text("type").notNull().default("rss"), // "rss" | "collection"
+  rssUrl: text("rss_url").notNull().default(""),
   imageUrl: text("image_url"),
   latestEpisodeDate: text("latest_episode_date"),
   createdAt: text("created_at")
@@ -20,7 +21,7 @@ export const episodes = sqliteTable("episodes", {
   guid: text("guid"),
   title: text("title").notNull(),
   description: text("description"),
-  audioUrl: text("audio_url").notNull(),
+  audioUrl: text("audio_url").notNull().default(""),
   pubDate: text("pub_date"),
   duration: integer("duration"),
   filePath: text("file_path"),

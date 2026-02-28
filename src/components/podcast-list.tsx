@@ -5,12 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, RefreshCw, Podcast } from "lucide-react";
+import { Trash2, RefreshCw, Podcast, FolderOpen } from "lucide-react";
 import { useState } from "react";
 
 interface PodcastWithCount {
   id: string;
   name: string;
+  type: string;
   rssUrl: string;
   imageUrl: string | null;
   latestEpisodeDate: string | null;
@@ -58,7 +59,11 @@ export function PodcastList({ podcasts }: { podcasts: PodcastWithCount[] }) {
           <Card key={podcast.id} className="group">
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
               <Link href={`/podcasts/${podcast.id}`} className="flex-1 min-w-0 flex items-center gap-3">
-                {podcast.imageUrl ? (
+                {podcast.type === "collection" ? (
+                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <FolderOpen className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                ) : podcast.imageUrl ? (
                   <Image
                     src={podcast.imageUrl}
                     alt=""

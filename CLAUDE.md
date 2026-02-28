@@ -43,7 +43,7 @@ Always run ESLint and TypeScript type check after making changes.
 **Environment**: `OPENAI_API_KEY` required in `.env.local` for German→Czech translation (see `.env.example`).
 
 **SQLite tables** (Drizzle schema in `src/db/schema.ts`):
-- `podcasts` — Podcast metadata (UUID PK)
+- `podcasts` — Podcast metadata (UUID PK, `type`: "rss" | "collection")
 - `episodes` — Episodes per podcast, deduped by guid/audioUrl (UUID PK)
 - `transcriptions` — Whisper transcription results + translation data (UUID PK)
 - `playbackSettings` — Playback speed per podcast (podcastId PK)
@@ -60,6 +60,8 @@ Always run ESLint and TypeScript type check after making changes.
 - `/api/transcriptions/[episodeId]/translate` — POST to trigger translation
 - `/api/transcriptions/status/[episodeId]` — GET transcription status
 - `/api/audio/stream/[episodeId]` — audio streaming with HTTP range support
+- `/api/collections` — POST to create a collection (virtual podcast for uploads)
+- `/api/collections/[id]/upload` — POST multipart upload audio file into collection
 - `/api/flashcards`, `/api/flashcards/[id]` — flashcard CRUD
 
 **Key patterns**:

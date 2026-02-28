@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { podcasts, episodes, playbackSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { parseFeed } from "./rss";
 import { downloadAudio } from "./download";
 import { unlinkSync, rmSync } from "fs";
@@ -89,7 +89,7 @@ export async function addPodcast(rssUrl: string) {
 }
 
 export async function refreshAllFeeds() {
-  const allPodcasts = await db.select().from(podcasts);
+  const allPodcasts = await db.select().from(podcasts).where(ne(podcasts.type, "collection"));
 
   for (const podcast of allPodcasts) {
     try {

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { EpisodeList } from "@/components/episode-list";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { UploadDialog } from "@/components/upload-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,12 @@ export default async function PodcastPage({
         <ChevronLeft className="h-4 w-4 mr-1" />
         Back to podcasts
       </Link>
-      <h1 className="text-2xl font-bold mb-1">{podcast.name}</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold">{podcast.name}</h1>
+        {podcast.type === "collection" && (
+          <UploadDialog collectionId={podcast.id} />
+        )}
+      </div>
       <p className="text-sm text-muted-foreground mb-6">
         {showing < total
           ? `Showing ${showing} of ${total} episodes`
