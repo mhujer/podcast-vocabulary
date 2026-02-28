@@ -300,7 +300,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
       {showPanel && (
         <div className="w-80 shrink-0 h-full flex flex-col">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold">Flashcards</h3>
+            <h3 className="text-sm font-semibold">Flashcards ({flashcards.length})</h3>
             {podcastName && episodeTitle && (
               <Button
                 variant="ghost"
