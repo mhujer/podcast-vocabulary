@@ -220,10 +220,10 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
     const lines = [
       "#separator:tab",
       `#deck:${deckName}`,
-      "#columns:FrontText\tBackText",
+      "#columns:FrontText\tBackText\tAdd Reverse",
       ...flashcards.map(
         (c) =>
-          `${c.front.replace(/\n/g, "<br>")}\t${c.back.replace(/\n/g, "<br>")}`
+          `${c.front.replace(/\n/g, "<br>")}\t${c.back.replace(/\n/g, "<br>")}\t1`
       ),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
