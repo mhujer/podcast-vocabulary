@@ -59,6 +59,7 @@ export const flashcards = sqliteTable("flashcards", {
   front: text("front").notNull(),
   back: text("back").notNull(),
   selectedText: text("selected_text").notNull(),
+  searchWord: text("search_word"),
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),

@@ -63,6 +63,7 @@ Always run ESLint and TypeScript type check after making changes.
 - `/api/collections` — POST to create a collection (virtual podcast for uploads)
 - `/api/collections/[id]/upload` — POST multipart upload audio file into collection
 - `/api/flashcards`, `/api/flashcards/[id]` — flashcard CRUD
+- `/api/anki/browse` — POST proxy to AnkiConnect `guiBrowse` (opens Anki card browser with search query)
 
 **Key patterns**:
 - Server components for reads, API routes for mutations

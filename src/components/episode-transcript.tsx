@@ -173,6 +173,18 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
           return next;
         });
         setSelectedWords(new Map());
+
+        // Fire-and-forget: open Anki browser with search word
+        if (card.searchWord) {
+          fetch("/api/anki/browse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: card.searchWord }),
+          })
+            .then((r) => r.json())
+            .then((data) => console.log(`[anki] Browse result:`, data))
+            .catch((err) => console.log(`[anki] Browse unavailable:`, err));
+        }
       } else {
         const err = await res.text();
         console.error(`[vocab] Create failed: ${err}`);
