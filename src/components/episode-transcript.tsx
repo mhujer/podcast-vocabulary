@@ -27,6 +27,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
   const [selectedWords, setSelectedWords] = useState<Map<number, Set<number>>>(new Map());
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [creating, setCreating] = useState(false);
+  const [scrollToBottomTrigger, setScrollToBottomTrigger] = useState(0);
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const [bubblePos, setBubblePos] = useState<{ top: number; left: number } | null>(null);
   const [visibleSegmentIndex, setVisibleSegmentIndex] = useState(-1);
@@ -173,6 +174,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
           return next;
         });
         setSelectedWords(new Map());
+        setScrollToBottomTrigger((n) => n + 1);
 
         // Fire-and-forget: open Anki browser with search word
         if (card.searchWord) {
@@ -332,6 +334,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
               onUpdate={handleFlashcardUpdate}
               onDelete={handleFlashcardDelete}
               onSegmentClick={setScrollToSegment}
+              scrollToBottomTrigger={scrollToBottomTrigger}
             />
           </div>
         </div>

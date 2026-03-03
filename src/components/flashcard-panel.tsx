@@ -15,6 +15,7 @@ export function FlashcardPanel({
   onUpdate,
   onDelete,
   onSegmentClick,
+  scrollToBottomTrigger,
 }: {
   flashcards: Flashcard[];
   segments?: TranscriptionSegment[];
@@ -22,8 +23,10 @@ export function FlashcardPanel({
   onUpdate: (id: string, field: "front" | "back", value: string) => void;
   onDelete: (id: string) => void;
   onSegmentClick?: (segmentIndex: number) => void;
+  scrollToBottomTrigger?: number;
 }) {
   const groupRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const setGroupRef = useCallback(
     (segIdx: number, el: HTMLDivElement | null) => {
@@ -54,6 +57,16 @@ export function FlashcardPanel({
     }
     return bestIdx;
   }, [activeSegmentIndex, flashcardSegmentIndices]);
+
+  // Scroll to bottom when a new flashcard is added
+  useEffect(() => {
+    if (!scrollToBottomTrigger) return;
+    // Small delay to let the DOM update with the new card
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [scrollToBottomTrigger]);
 
   // Auto-scroll to the highlighted group (ref access is safe inside effects)
   useEffect(() => {
@@ -111,6 +124,7 @@ export function FlashcardPanel({
             ))}
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
     </ScrollArea>
   );
