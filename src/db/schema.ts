@@ -27,6 +27,7 @@ export const episodes = sqliteTable("episodes", {
   filePath: text("file_path"),
   lastPlaybackPosition: real("last_playback_position"),
   lastPlayedDate: text("last_played_date"),
+  done: integer("done", { mode: "boolean" }).notNull().default(false),
 });
 
 export const transcriptions = sqliteTable("transcriptions", {

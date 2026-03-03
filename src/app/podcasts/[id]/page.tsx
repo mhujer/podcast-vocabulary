@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { podcasts, episodes, transcriptions } from "@/db/schema";
-import { eq, desc, count } from "drizzle-orm";
+import { podcasts, episodes, transcriptions, flashcards } from "@/db/schema";
+import { eq, desc, count, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { EpisodeList } from "@/components/episode-list";
 import Link from "next/link";
@@ -67,6 +67,20 @@ export default async function PodcastPage({
     }
   );
 
+  // Flashcard counts per episode
+  const episodeIds = episodeList.map((e) => e.id);
+  const flashcardCounts: Record<string, number> = {};
+  if (episodeIds.length > 0) {
+    const rows = await db
+      .select({ episodeId: flashcards.episodeId, count: count() })
+      .from(flashcards)
+      .where(inArray(flashcards.episodeId, episodeIds))
+      .groupBy(flashcards.episodeId);
+    for (const row of rows) {
+      flashcardCounts[row.episodeId] = row.count;
+    }
+  }
+
   const showing = episodeList.length;
 
   return (
@@ -89,7 +103,7 @@ export default async function PodcastPage({
           ? `Showing ${showing} of ${total} episodes`
           : `${total} episodes`}
       </p>
-      <EpisodeList episodes={episodeList} podcast={podcast} />
+      <EpisodeList episodes={episodeList} podcast={podcast} flashcardCounts={flashcardCounts} />
     </main>
   );
 }

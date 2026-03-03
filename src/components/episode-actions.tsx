@@ -31,6 +31,7 @@ export function EpisodeActions({
   const [downloading, setDownloading] = useState(false);
   const [tsStatus, setTsStatus] = useState(transcriptionStatus);
   const [tlStatus, setTlStatus] = useState(translationStatusProp);
+  const [isDone, setIsDone] = useState(episode.done);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -85,8 +86,25 @@ export function EpisodeActions({
     }
   };
 
+  const handleToggleDone = async () => {
+    const newDone = !isDone;
+    try {
+      const res = await fetch(`/api/episodes/${episode.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: newDone }),
+      });
+      if (res.ok) {
+        setIsDone(newDone);
+        console.log(`[episode] Toggled done=${newDone}`);
+      }
+    } catch (err) {
+      console.error("[episode] Toggle done failed:", err);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2">
       {episode.filePath ? (
         <>
           <Button
@@ -159,6 +177,17 @@ export function EpisodeActions({
           Download
         </Button>
       )}
+      <div>
+        <Button
+          variant={isDone ? "outline" : "ghost"}
+          size="sm"
+          onClick={handleToggleDone}
+          className={isDone ? "text-green-600 border-green-600" : ""}
+        >
+          <CheckCircle className="h-4 w-4 mr-1" />
+          {isDone ? "Done — undo?" : "Mark as done"}
+        </Button>
+      </div>
     </div>
   );
 }

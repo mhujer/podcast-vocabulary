@@ -44,7 +44,7 @@ Always run ESLint and TypeScript type check after making changes.
 
 **SQLite tables** (Drizzle schema in `src/db/schema.ts`):
 - `podcasts` — Podcast metadata (UUID PK, `type`: "rss" | "collection")
-- `episodes` — Episodes per podcast, deduped by guid/audioUrl (UUID PK)
+- `episodes` — Episodes per podcast, deduped by guid/audioUrl (UUID PK, `done` boolean)
 - `transcriptions` — Whisper transcription results + translation data (UUID PK)
 - `playbackSettings` — Playback speed per podcast (podcastId PK)
 - `flashcards` — User-created flashcards from transcript words (UUID PK)
@@ -52,7 +52,7 @@ Always run ESLint and TypeScript type check after making changes.
 **API routes** (`src/app/api/`):
 - `/api/podcasts` — CRUD, `/api/podcasts/refresh` — refresh all feeds
 - `/api/podcasts/[id]/episodes` — episodes for podcast
-- `/api/episodes/[id]` — episode details
+- `/api/episodes/[id]` — GET episode details, PATCH `{ done }` to toggle done status
 - `/api/episodes/[id]/download` — download episode audio
 - `/api/episodes/[id]/playback` — GET/PATCH playback position & speed
 - `/api/transcriptions` — POST to enqueue, GET for batch status

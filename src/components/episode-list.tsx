@@ -7,6 +7,7 @@ import { Play, Download, Loader2, FileText, CheckCircle, AlertCircle } from "luc
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import type { Episode, Podcast } from "@/db/schema";
+import { Badge } from "@/components/ui/badge";
 
 interface TranscriptionStatus {
   episodeId: string;
@@ -17,9 +18,11 @@ interface TranscriptionStatus {
 export function EpisodeList({
   episodes,
   podcast,
+  flashcardCounts = {},
 }: {
   episodes: Episode[];
   podcast: Podcast;
+  flashcardCounts?: Record<string, number>;
 }) {
   const router = useRouter();
   const { play, currentEpisode } = usePlayer();
@@ -137,6 +140,12 @@ export function EpisodeList({
               <p className="text-xs text-muted-foreground">
                 {episode.pubDate && new Date(episode.pubDate).toLocaleDateString()}
                 {episode.duration && <> &middot; {formatDuration(episode.duration)}</>}
+                {episode.done && (
+                  <Badge variant="default" className="ml-2 bg-green-600 text-white text-[10px] px-1.5 py-0">Done</Badge>
+                )}
+                {!episode.done && (flashcardCounts[episode.id] ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-[10px] px-1.5 py-0">{flashcardCounts[episode.id]} cards</Badge>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-1">

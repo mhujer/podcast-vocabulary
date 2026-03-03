@@ -5,6 +5,16 @@ import { usePlayer } from "@/hooks/use-player";
 import { TranscriptDisplay, mergeWhisperTokens } from "@/components/transcript-display";
 import { FlashcardPanel } from "@/components/flashcard-panel";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Download, Loader2, Plus } from "lucide-react";
 import type { TranscriptionSegment } from "@/types/transcription";
 import type { Flashcard } from "@/db/schema";
@@ -32,6 +42,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
   const [bubblePos, setBubblePos] = useState<{ top: number; left: number } | null>(null);
   const [visibleSegmentIndex, setVisibleSegmentIndex] = useState(-1);
   const [scrollToSegment, setScrollToSegment] = useState<number | null>(null);
+  const [showDoneDialog, setShowDoneDialog] = useState(false);
 
   // Fetch transcription
   useEffect(() => {
@@ -234,6 +245,7 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
     const lines = [
       "#separator:tab",
       `#deck:${deckName}`,
+      "#notetype:Basic Quizlet Extended",
       "#columns:FrontText\tBackText\tAdd Reverse",
       ...flashcards.map(
         (c) =>
@@ -248,7 +260,23 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
     a.click();
     URL.revokeObjectURL(url);
     console.log(`[vocab] Exported ${flashcards.length} flashcards for Anki`);
+    setShowDoneDialog(true);
   }, [flashcards, podcastName, episodeTitle]);
+
+  const handleMarkDone = useCallback(async () => {
+    if (!episodeId) return;
+    try {
+      await fetch(`/api/episodes/${episodeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: true }),
+      });
+      console.log(`[episode] Marked ${episodeId} as done`);
+    } catch (err) {
+      console.error("[episode] Failed to mark as done:", err);
+    }
+    setShowDoneDialog(false);
+  }, [episodeId]);
 
   if (!episodeId) return null;
   if (!state || state.episodeId !== episodeId || state.loading) return null;
@@ -339,6 +367,21 @@ export function EpisodeTranscript({ episodeId: episodeIdProp, podcastName, episo
           </div>
         </div>
       )}
+
+      <AlertDialog open={showDoneDialog} onOpenChange={setShowDoneDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark episode as done?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Flashcards exported. Mark this episode as done?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not yet</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMarkDone}>Mark as done</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
