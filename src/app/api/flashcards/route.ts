@@ -83,7 +83,9 @@ Given a German sentence from a podcast with surrounding context and a highlighte
 - baseForm: the dictionary/base form of the highlighted word(s) in German. For nouns use nominative singular with article and append the plural ending in parentheses, e.g. "der Hund (-e)", "die Katze (-n)", "das Kind (-er)". For irregular/strong verbs use infinitive and append key conjugation forms in parentheses: 3rd person present, preterite, perfect auxiliary + past participle, e.g. "laufen (läuft, lief, ist gelaufen)", "essen (isst, aß, hat gegessen)". For regular/weak verbs just use the infinitive. For adjectives use base form. If it's an idiom or multi-word phrase, return the phrase in its canonical form. For verbs requiring dative or accusative objects, include the pronoun hint abbreviated as "j-m." (jemandem/dative) or "j-n." (jemanden/accusative), e.g. "(j-m.) helfen", "(j-n.) fragen".
 - translation: the Czech translation of the highlighted word(s) in base/dictionary form (e.g. singular nominative for nouns, infinitive for verbs), but choosing the correct meaning based on the sentence context. If there are more meanings, separate them by comma.
 - exampleSentence: a simplified, self-contained German sentence using the highlighted word. It must make sense on its own without the podcast context. Keep it natural and concise.
-- searchWord: the bare dictionary word without articles, plural endings, or conjugation info. For nouns just the noun (e.g. "Hund"), for verbs just the infinitive (e.g. "laufen"), for phrases the key word.
+- searchWord: the bare dictionary word without articles, plural endings, or conjugation info. For nouns just the noun (e.g. "Hund"), for verbs just the infinitive (e.g. "laufen"), for phrases the most distinctive word from the phrase.
+
+If the highlighted text contains multiple words, treat the entire selection as a phrase or expression. Do not reduce it to a single word. Return the full phrase in its canonical form as the baseForm (e.g. "in Anspruch nehmen", "Bescheid geben", "sich Sorgen machen").
 
 ${contextBlock}
 Highlighted: "${selectedWords}"`,
