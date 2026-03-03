@@ -20,9 +20,12 @@ npm run build      # Production build
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript type check
 npm run db:push    # Push Drizzle schema changes to SQLite
+npx tsx scripts/backup-db.ts  # Manual DB backup (SQL dump to data/backups/)
 ```
 
 **NEVER use `--force` with `drizzle-kit push`.** It can silently truncate tables with data. When adding a not-null column to an existing table, write a raw SQL migration instead (e.g. `ALTER TABLE ... ADD COLUMN ... NOT NULL DEFAULT ...`).
+
+**Always run `npx tsx scripts/backup-db.ts` before any Drizzle schema changes** (`db:push`, migrations, etc.). The backup runs automatically on container startup, but run it manually before local schema operations.
 
 No test framework is configured yet.
 

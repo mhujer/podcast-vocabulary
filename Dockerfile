@@ -49,4 +49,4 @@ ENV COLORTERM=truecolor
 EXPOSE 3000
 
 # Default command: download whisper model if missing, install deps, run supervisord
-CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && exec supervisord -c supervisord.conf"]
+CMD ["bash", "-c", "test -f /podcast-vocabulary/data/whisper/ggml-medium.bin || download-ggml-model.sh medium /podcast-vocabulary/data/whisper && npm install && npx tsx scripts/backup-db.ts && exec supervisord -c supervisord.conf"]
