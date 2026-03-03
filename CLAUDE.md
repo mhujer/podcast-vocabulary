@@ -22,6 +22,8 @@ npx tsc --noEmit   # TypeScript type check
 npm run db:push    # Push Drizzle schema changes to SQLite
 ```
 
+**NEVER use `--force` with `drizzle-kit push`.** It can silently truncate tables with data. When adding a not-null column to an existing table, write a raw SQL migration instead (e.g. `ALTER TABLE ... ADD COLUMN ... NOT NULL DEFAULT ...`).
+
 No test framework is configured yet.
 
 Always run ESLint and TypeScript type check after making changes.
