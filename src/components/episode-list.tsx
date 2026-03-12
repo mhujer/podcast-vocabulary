@@ -30,13 +30,13 @@ export function EpisodeList({
   const [statuses, setStatuses] = useState<Record<string, TranscriptionStatus>>({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const downloadedIdsKey = episodes.filter((e) => e.filePath).map((e) => e.id).join(",");
+  const allEpisodeIdsKey = episodes.map((e) => e.id).join(",");
 
   const fetchStatuses = useCallback(async () => {
-    const ids = downloadedIdsKey.split(",").filter(Boolean);
+    const ids = allEpisodeIdsKey.split(",").filter(Boolean);
     if (!ids.length) return;
     try {
-      const res = await fetch(`/api/transcriptions?episodeIds=${downloadedIdsKey}`);
+      const res = await fetch(`/api/transcriptions?episodeIds=${allEpisodeIdsKey}`);
       const rows: TranscriptionStatus[] = await res.json();
       const map: Record<string, TranscriptionStatus> = {};
       for (const row of rows) {
@@ -46,7 +46,7 @@ export function EpisodeList({
     } catch {
       // ignore
     }
-  }, [downloadedIdsKey]);
+  }, [allEpisodeIdsKey]);
 
   useEffect(() => {
     fetchStatuses();
@@ -189,19 +189,26 @@ export function EpisodeList({
                     </Button>
                   )}
                 </>
-              ) : downloadingIds.has(episode.id) ? (
-                <Button variant="ghost" size="icon" disabled>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </Button>
               ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDownload(episode.id)}
-                  title="Download"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
+                <>
+                  {downloadingIds.has(episode.id) ? (
+                    <Button variant="ghost" size="icon" disabled>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownload(episode.id)}
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {ts?.status === "completed" && (
+                    <CheckCircle className="h-4 w-4 text-green-500 mx-2" />
+                  )}
+                </>
               )}
             </div>
           </div>
