@@ -1,48 +1,11 @@
 import { db } from "@/db";
 import { podcasts, episodes, playbackSettings } from "@/db/schema";
-import { eq, ne } from "drizzle-orm";
+import { eq, ne, and, isNull, not } from "drizzle-orm";
 import { parseFeed } from "./rss";
 import { downloadAudio } from "./download";
-import { unlinkSync, rmSync } from "fs";
+import { existsSync, unlinkSync, rmSync, readdirSync } from "fs";
 import { join } from "path";
 import { AUDIO_DIR } from "@/db";
-
-const MAX_CONCURRENT_DOWNLOADS = 3;
-const AUTO_DOWNLOAD_COUNT = 10;
-
-async function downloadWithConcurrency(
-  tasks: Array<{ episodeId: string; audioUrl: string; podcastId: string }>
-) {
-  const results: Array<{ episodeId: string; filePath?: string; error?: string }> = [];
-  const executing = new Set<Promise<void>>();
-
-  for (const task of tasks) {
-    const p = (async () => {
-      try {
-        const filePath = await downloadAudio(task.audioUrl, task.episodeId, task.podcastId);
-        await db
-          .update(episodes)
-          .set({ filePath })
-          .where(eq(episodes.id, task.episodeId));
-        results.push({ episodeId: task.episodeId, filePath });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error(`Download failed for episode ${task.episodeId}: ${message}`);
-        results.push({ episodeId: task.episodeId, error: message });
-      }
-    })();
-
-    executing.add(p);
-    p.finally(() => executing.delete(p));
-
-    if (executing.size >= MAX_CONCURRENT_DOWNLOADS) {
-      await Promise.race(executing);
-    }
-  }
-
-  await Promise.allSettled(executing);
-  return results;
-}
 
 export async function addPodcast(rssUrl: string) {
   const feed = await parseFeed(rssUrl);
@@ -76,14 +39,6 @@ export async function addPodcast(rssUrl: string) {
 
   // Initialize playback settings
   await db.insert(playbackSettings).values({ podcastId: podcast.id }).onConflictDoNothing();
-
-  // Fire-and-forget: download latest episodes
-  const toDownload = insertedEpisodes.slice(0, AUTO_DOWNLOAD_COUNT).map((ep) => ({
-    episodeId: ep.id,
-    audioUrl: ep.audioUrl,
-    podcastId: podcast.id,
-  }));
-  downloadWithConcurrency(toDownload).catch(console.error);
 
   return podcast;
 }
@@ -142,25 +97,43 @@ export async function refreshAllFeeds() {
           .where(eq(podcasts.id, podcast.id));
       }
 
-      // Download latest un-downloaded episodes
-      const allEps = await db
-        .select()
+      // Filesystem sync: clear filePath for missing files, remove orphans
+      const epsWithFiles = await db
+        .select({ id: episodes.id, filePath: episodes.filePath })
         .from(episodes)
-        .where(eq(episodes.podcastId, podcast.id))
-        .orderBy(episodes.pubDate);
+        .where(and(eq(episodes.podcastId, podcast.id), not(isNull(episodes.filePath))));
 
-      // Sort newest first for download priority
-      const sortedEps = [...allEps].sort((a, b) => {
-        if (!a.pubDate || !b.pubDate) return 0;
-        return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
-      });
+      const referencedFiles = new Set<string>();
+      for (const ep of epsWithFiles) {
+        if (ep.filePath && !existsSync(ep.filePath)) {
+          console.log(`Clearing missing filePath for episode ${ep.id}: ${ep.filePath}`);
+          await db.update(episodes).set({ filePath: null }).where(eq(episodes.id, ep.id));
+        } else if (ep.filePath) {
+          referencedFiles.add(ep.filePath);
+        }
+      }
 
-      const toDownload = sortedEps
-        .filter((ep) => !ep.filePath)
-        .slice(0, AUTO_DOWNLOAD_COUNT)
-        .map((ep) => ({ episodeId: ep.id, audioUrl: ep.audioUrl, podcastId: podcast.id }));
-
-      downloadWithConcurrency(toDownload).catch(console.error);
+      // Remove orphan audio files not referenced by any episode
+      const podcastAudioDir = join(AUDIO_DIR, podcast.id);
+      if (existsSync(podcastAudioDir)) {
+        const files = readdirSync(podcastAudioDir);
+        for (const file of files) {
+          const fullPath = join(podcastAudioDir, file);
+          if (!referencedFiles.has(fullPath)) {
+            console.log(`Removing orphan audio file: ${fullPath}`);
+            try {
+              unlinkSync(fullPath);
+            } catch {
+              // file may already be gone
+            }
+          }
+        }
+        // Clean up empty directory
+        const remaining = readdirSync(podcastAudioDir);
+        if (remaining.length === 0) {
+          rmSync(podcastAudioDir, { recursive: true, force: true });
+        }
+      }
     } catch (err) {
       console.error(`Failed to refresh feed for podcast ${podcast.id}: ${err}`);
     }

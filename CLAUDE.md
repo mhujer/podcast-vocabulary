@@ -73,7 +73,8 @@ Always run ESLint and TypeScript type check after making changes.
 **Key patterns**:
 - Server components for reads, API routes for mutations
 - Background worker process (`src/worker/transcription-worker.ts`) polls DB for pending transcriptions/translations, processes sequentially (one at a time, prevents memory issues)
-- Fire-and-forget downloads with concurrency limit of 3
+- Audio downloads are on-demand only (no auto-download on add/refresh)
+- Feed refresh syncs filesystem: clears `filePath` for missing audio, removes orphan files
 - Playback speed is per-podcast, playback position is per-episode
 - Transcription: manual trigger, German language, word-level timestamps via local whisper.cpp. Status: `pending` → `in_progress` → `completed` / `failed`
 - Translation auto-triggered after transcription completes (German→Czech via OpenAI)
