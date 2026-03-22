@@ -16,6 +16,7 @@ import { Upload } from "lucide-react";
 export function UploadDialog({ collectionId }: { collectionId: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,9 @@ export function UploadDialog({ collectionId }: { collectionId: string }) {
       if (title.trim()) {
         formData.append("title", title.trim());
       }
+      if (youtubeUrl.trim()) {
+        formData.append("youtubeUrl", youtubeUrl.trim());
+      }
 
       const res = await fetch(`/api/collections/${collectionId}/upload`, {
         method: "POST",
@@ -50,6 +54,7 @@ export function UploadDialog({ collectionId }: { collectionId: string }) {
       }
 
       setTitle("");
+      setYoutubeUrl("");
       if (fileRef.current) fileRef.current.value = "";
       setOpen(false);
       router.refresh();
@@ -83,6 +88,11 @@ export function UploadDialog({ collectionId }: { collectionId: string }) {
             placeholder="Title (optional, defaults to filename)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+          <Input
+            placeholder="YouTube URL or video ID (optional)"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
           />
           {error && (
             <p className="text-sm text-destructive font-mono break-all">{error}</p>

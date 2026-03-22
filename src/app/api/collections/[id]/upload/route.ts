@@ -4,6 +4,7 @@ import { podcasts, episodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join, extname } from "path";
+import { parseYouTubeVideoId } from "@/lib/youtube";
 
 export async function POST(
   request: NextRequest,
@@ -29,9 +30,18 @@ export async function POST(
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const title = (formData.get("title") as string) || undefined;
+  const youtubeUrl = formData.get("youtubeUrl") as string | null;
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  }
+
+  let youtubeVideoId: string | null = null;
+  if (youtubeUrl) {
+    youtubeVideoId = parseYouTubeVideoId(youtubeUrl);
+    if (!youtubeVideoId) {
+      return NextResponse.json({ error: "Invalid YouTube URL or video ID" }, { status: 400 });
+    }
   }
 
   const episodeId = crypto.randomUUID();
@@ -55,6 +65,7 @@ export async function POST(
       title: episodeTitle,
       filePath,
       pubDate: new Date().toISOString(),
+      youtubeVideoId,
     })
     .returning();
 

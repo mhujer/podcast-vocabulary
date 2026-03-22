@@ -28,6 +28,7 @@ export const episodes = sqliteTable("episodes", {
   lastPlaybackPosition: real("last_playback_position"),
   lastPlayedDate: text("last_played_date"),
   done: integer("done", { mode: "boolean" }).notNull().default(false),
+  youtubeVideoId: text("youtube_video_id"),
 });
 
 export const transcriptions = sqliteTable("transcriptions", {

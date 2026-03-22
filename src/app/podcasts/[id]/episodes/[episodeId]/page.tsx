@@ -8,6 +8,7 @@ import { EpisodeActions } from "@/components/episode-actions";
 import { EpisodeTranscript } from "@/components/episode-transcript";
 import { CollapsibleDescription } from "@/components/collapsible-description";
 import { SidebarPlayer } from "@/components/sidebar-player";
+import { YouTubePlayer } from "@/components/youtube-player";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,10 @@ export default async function EpisodeDetailPage({
           transcriptionStatus={transcription?.status ?? null}
           translationStatus={transcription?.translationStatus ?? null}
         />
+
+        {episode.youtubeVideoId && (
+          <YouTubePlayer videoId={episode.youtubeVideoId} />
+        )}
 
         <SidebarPlayer />
 
