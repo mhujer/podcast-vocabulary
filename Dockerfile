@@ -1,6 +1,6 @@
 FROM ghcr.io/ggml-org/whisper.cpp:main AS whisper
 
-FROM node:24-slim
+FROM node:24
 
 ARG APP_DIR=/podcast-vocabulary
 
