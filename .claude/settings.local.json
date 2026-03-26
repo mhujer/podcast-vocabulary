@@ -9,7 +9,8 @@
       "WebFetch(domain:platform.openai.com)",
       "Bash(git status:*)",
       "Bash(npm ls:*)",
-      "WebFetch(domain:git.sr.ht)"
+      "WebFetch(domain:git.sr.ht)",
+      "Bash(git diff:*)"
     ]
   }
 }

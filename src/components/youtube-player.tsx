@@ -7,14 +7,13 @@ import { usePlayer } from "@/hooks/use-player";
 interface YTPlayer {
   playVideo(): void;
   pauseVideo(): void;
-  stopVideo(): void;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
   getCurrentTime(): number;
-  getDuration(): number;
   getPlaybackRate(): number;
   setPlaybackRate(rate: number): void;
   getPlayerState(): number;
   destroy(): void;
+  mute(): void;
 }
 
 interface YTPlayerEvent {
@@ -47,21 +46,37 @@ declare global {
   }
 }
 
+const SYNC_INTERVAL = 500;
+const DRIFT_THRESHOLD = 0.5;
+
 export function YouTubePlayer({ videoId }: { videoId: string }) {
   const reactId = useId();
   const containerId = `yt-player-${reactId.replace(/:/g, "")}`;
   const playerRef = useRef<YTPlayer | null>(null);
-  const { registerYouTubePlayer } = usePlayer();
+  const readyRef = useRef(false);
+  const { currentTime, isPlaying, playbackSpeed } = usePlayer();
+
+  // Store latest values in refs for use in interval callback
+  const currentTimeRef = useRef(currentTime);
+  const playbackSpeedRef = useRef(playbackSpeed);
 
   useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
+  useEffect(() => {
+    playbackSpeedRef.current = playbackSpeed;
+  }, [playbackSpeed]);
+
+  // Initialize YT player
+  useEffect(() => {
     const initPlayer = () => {
       if (!window.YT) return;
 
-      // Destroy previous instance if any
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
+        readyRef.current = false;
       }
 
       playerRef.current = new window.YT.Player(containerId, {
@@ -70,14 +85,13 @@ export function YouTubePlayer({ videoId }: { videoId: string }) {
           autoplay: 0,
           modestbranding: 1,
           rel: 0,
+          mute: 1,
         },
         events: {
           onReady: (event) => {
-            console.log("YouTube player ready");
-            registerYouTubePlayer(event.target);
-          },
-          onStateChange: (event) => {
-            console.log("YouTube state change:", event.data);
+            console.log("YouTube player ready (muted follower)");
+            event.target.mute();
+            readyRef.current = true;
           },
         },
       });
@@ -86,7 +100,6 @@ export function YouTubePlayer({ videoId }: { videoId: string }) {
     if (window.YT) {
       initPlayer();
     } else {
-      // Load the API script
       const existingScript = document.querySelector(
         'script[src="https://www.youtube.com/iframe_api"]'
       );
@@ -102,9 +115,68 @@ export function YouTubePlayer({ videoId }: { videoId: string }) {
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
+        readyRef.current = false;
       }
     };
-  }, [videoId, containerId, registerYouTubePlayer]);
+  }, [videoId, containerId]);
+
+  // Sync play/pause state
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !readyRef.current) return;
+
+    try {
+      if (isPlaying) {
+        player.playVideo();
+      } else {
+        player.pauseVideo();
+      }
+    } catch {
+      // player may be destroyed
+    }
+  }, [isPlaying]);
+
+  // Sync playback speed
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !readyRef.current) return;
+
+    try {
+      if (player.getPlaybackRate() !== playbackSpeed) {
+        player.setPlaybackRate(playbackSpeed);
+      }
+    } catch {
+      // player may be destroyed
+    }
+  }, [playbackSpeed]);
+
+  // Periodic drift correction
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const player = playerRef.current;
+      if (!player || !readyRef.current) return;
+
+      try {
+        const ytTime = player.getCurrentTime();
+        const audioTime = currentTimeRef.current;
+        const drift = Math.abs(ytTime - audioTime);
+
+        if (drift > DRIFT_THRESHOLD) {
+          console.log(`YT drift correction: ${drift.toFixed(2)}s`);
+          player.seekTo(audioTime, true);
+        }
+
+        // Also sync speed if it drifted
+        if (player.getPlaybackRate() !== playbackSpeedRef.current) {
+          player.setPlaybackRate(playbackSpeedRef.current);
+        }
+      } catch {
+        // player may be destroyed
+      }
+    }, SYNC_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="w-full aspect-video bg-black rounded-md overflow-hidden">
